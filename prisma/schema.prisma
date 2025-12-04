@@ -1,0 +1,284 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Enums for type safety
+enum ProjectStatus {
+  DRAFT
+  IN_PROGRESS
+  REVIEW
+  APPROVED
+  COMPLETED
+  ARCHIVED
+}
+
+enum ProjectPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum CustomerType {
+  SALON
+  DISTRIBUTOR
+  CORPORATE
+  VIP
+}
+
+enum AssetType {
+  IMAGE
+  VIDEO
+  DOCUMENT
+  PRESENTATION
+  GUIDE
+  CERTIFICATE
+}
+
+enum CampaignAudience {
+  B2B
+  B2C
+  BOTH
+}
+
+// Core Models
+model Customer {
+  id            String        @id @default(cuid())
+  name          String
+  type          CustomerType
+  email         String?
+  phone         String?
+  website       String?
+  address       String?
+  notes         String?       @db.Text
+  tags          String[]
+
+  primaryContact   String?
+  accountManager   String?
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  lastContactAt DateTime?
+
+  projects      Project[]
+  activities    Activity[]
+
+  @@index([type])
+  @@index([createdAt])
+}
+
+model Project {
+  id            String           @id @default(cuid())
+  title         String
+  description   String?          @db.Text
+  status        ProjectStatus    @default(DRAFT)
+  priority      ProjectPriority  @default(MEDIUM)
+  dueDate       DateTime?
+
+  customerId    String?
+  customer      Customer?        @relation(fields: [customerId], references: [id])
+
+  owner         String           @default("Team")
+  assignees     String[]         @default([])
+
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  completedAt   DateTime?
+
+  tasks         Task[]
+  assets        Asset[]
+  activities    Activity[]
+
+  @@index([status, priority])
+  @@index([customerId])
+  @@index([dueDate])
+}
+
+model Task {
+  id            String       @id @default(cuid())
+  title         String
+  description   String?      @db.Text
+  completed     Boolean      @default(false)
+  priority      Int          @default(0)
+  dueDate       DateTime?
+
+  projectId     String
+  project       Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  assignee      String?
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  completedAt   DateTime?
+
+  @@index([projectId])
+  @@index([completed])
+}
+
+model Asset {
+  id            String       @id @default(cuid())
+  name          String
+  type          AssetType
+  url           String
+  thumbnailUrl  String?
+  cloudinaryId  String?
+  fileSize      Int?
+  mimeType      String?
+
+  description   String?      @db.Text
+  tags          String[]
+  collection    String?
+
+  projectId     String?
+  project       Project?     @relation(fields: [projectId], references: [id])
+  campaignId    String?
+  campaign      Campaign?    @relation(fields: [campaignId], references: [id])
+
+  downloads     Int          @default(0)
+  views         Int          @default(0)
+
+  uploadedBy    String       @default("System")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([type])
+  @@index([tags])
+  @@index([collection])
+}
+
+model Campaign {
+  id            String           @id @default(cuid())
+  name          String
+  description   String?          @db.Text
+  audience      CampaignAudience @default(BOTH)
+  status        String           @default("draft")
+
+  launchDate    DateTime
+  endDate       DateTime?
+
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  assets        Asset[]
+  activities    Activity[]
+
+  @@index([launchDate])
+  @@index([status])
+}
+
+model Activity {
+  id            String       @id @default(cuid())
+  type          String
+  description   String       @db.Text
+
+  customerId    String?
+  customer      Customer?    @relation(fields: [customerId], references: [id])
+  projectId     String?
+  project       Project?     @relation(fields: [projectId], references: [id])
+  campaignId    String?
+  campaign      Campaign?    @relation(fields: [campaignId], references: [id])
+
+  performedBy   String       @default("System")
+  createdAt     DateTime     @default(now())
+
+  @@index([customerId])
+  @@index([projectId])
+  @@index([createdAt])
+}
+
+// Communication System Models
+enum EntityType {
+  PROJECT
+  ASSET
+  CUSTOMER
+  CAMPAIGN
+}
+
+enum NotificationType {
+  COMMENT
+  REPLY
+  ATTACHMENT
+  SYSTEM
+}
+
+model Comment {
+  id            String       @id @default(cuid())
+  content       String       @db.Text
+
+  // Polymorphic entity relationship
+  entityType    EntityType
+  entityId      String
+
+  // Author information
+  author        String       @default("Anonymous")
+  authorEmail   String?
+
+  // Threading support
+  parentId      String?
+  parent        Comment?     @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies       Comment[]    @relation("CommentReplies")
+
+  // Engagement
+  reactions     Json?        // Store reactions as JSON: [{ emoji: "👍", count: 3, users: ["user1", "user2"] }]
+
+  // Metadata
+  editedAt      DateTime?
+  deletedAt     DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  // Relations
+  attachments   CommentAttachment[]
+  notifications Notification[]
+
+  @@index([entityType, entityId])
+  @@index([parentId])
+  @@index([createdAt])
+  @@index([author])
+}
+
+model CommentAttachment {
+  id            String       @id @default(cuid())
+  filename      String
+  url           String
+  mimeType      String
+  fileSize      Int
+
+  commentId     String
+  comment       Comment      @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  uploadedBy    String       @default("Anonymous")
+  createdAt     DateTime     @default(now())
+
+  @@index([commentId])
+}
+
+model Notification {
+  id            String           @id @default(cuid())
+  type          NotificationType
+  title         String
+  message       String           @db.Text
+
+  // Target user
+  userId        String
+  read          Boolean          @default(false)
+  readAt        DateTime?
+
+  // Link to related comment
+  commentId     String?
+  comment       Comment?         @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  // Link context
+  entityType    EntityType?
+  entityId      String?
+
+  createdAt     DateTime         @default(now())
+
+  @@index([userId, read])
+  @@index([createdAt])
+  @@index([commentId])
+}
