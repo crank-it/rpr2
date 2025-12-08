@@ -1,11 +1,10 @@
 'use client'
 
-import { Plus, Users as UsersIcon, Search, Filter, Mail, Phone, FolderOpen, Pencil, Award } from 'lucide-react'
+import { Plus, Users as UsersIcon, Search, Filter, Mail, Phone, FolderOpen, Pencil } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { CreateCustomerModal } from '@/components/customers/CreateCustomerModal'
 import { formatDate } from '@/lib/utils'
-import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -26,11 +25,13 @@ interface Customer {
   type: string
   email: string | null
   phone: string | null
-  primary_contact: string | null
-  created_at: string
-  brands: string[]
-  spending_tier: 'TOP_1' | 'TOP_3' | 'TOP_10' | null
-  annual_spend: number | null
+  primaryContact: string | null
+  createdAt: string
+  tags: string[]
+  _count?: {
+    projects: number
+    activities: number
+  }
 }
 
 const getCustomerTypeVariant = (type: string) => {
@@ -43,17 +44,6 @@ const getCustomerTypeVariant = (type: string) => {
   return variants[type] || 'secondary'
 }
 
-const getSpendingTierInfo = (tier: 'TOP_1' | 'TOP_3' | 'TOP_10' | null | undefined) => {
-  if (!tier) return null
-
-  const tiers = {
-    'TOP_1': { label: 'Top 1%', color: 'bg-amber-100 text-amber-800 border-amber-300' },
-    'TOP_3': { label: 'Top 3%', color: 'bg-rose-100 text-rose-800 border-rose-300' },
-    'TOP_10': { label: 'Top 10%', color: 'bg-teal-100 text-teal-800 border-teal-300' }
-  }
-
-  return tiers[tier]
-}
 
 export default function CustomersPage() {
   const router = useRouter()
@@ -65,15 +55,15 @@ export default function CustomersPage() {
 
   const fetchCustomers = async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('customers')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (error) {
+    try {
+      const response = await fetch('/api/customers')
+      if (!response.ok) {
+        throw new Error('Failed to fetch customers')
+      }
+      const data = await response.json()
+      setCustomers(data)
+    } catch (error) {
       console.error('Error fetching customers:', error)
-    } else {
-      setCustomers(data || [])
     }
     setLoading(false)
   }
@@ -83,25 +73,26 @@ export default function CustomersPage() {
   }, [])
 
   const handleCustomerCreated = async (newCustomer: Partial<Customer>) => {
-    const { data, error } = await supabase
-      .from('customers')
-      .insert([{
-        name: newCustomer.name,
-        type: newCustomer.type || 'SALON',
-        email: newCustomer.email || null,
-        phone: newCustomer.phone || null,
-        primary_contact: newCustomer.primary_contact || null,
-        brands: newCustomer.brands || [],
-        spending_tier: newCustomer.spending_tier || null,
-        annual_spend: newCustomer.annual_spend || null
-      }])
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Error creating customer:', error)
-    } else if (data) {
+    try {
+      const response = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newCustomer.name,
+          type: newCustomer.type || 'SALON',
+          email: newCustomer.email || null,
+          phone: newCustomer.phone || null,
+          primaryContact: newCustomer.primaryContact || null,
+          tags: newCustomer.tags || []
+        })
+      })
+      if (!response.ok) {
+        throw new Error('Failed to create customer')
+      }
+      const data = await response.json()
       setCustomers([data, ...customers])
+    } catch (error) {
+      console.error('Error creating customer:', error)
     }
     setIsCreateModalOpen(false)
   }
@@ -109,26 +100,26 @@ export default function CustomersPage() {
   const handleCustomerUpdated = async (updatedCustomer: Partial<Customer>) => {
     if (!editingCustomer) return
 
-    const { data, error } = await supabase
-      .from('customers')
-      .update({
-        name: updatedCustomer.name,
-        type: updatedCustomer.type,
-        email: updatedCustomer.email,
-        phone: updatedCustomer.phone,
-        primary_contact: updatedCustomer.primary_contact,
-        brands: updatedCustomer.brands,
-        spending_tier: updatedCustomer.spending_tier,
-        annual_spend: updatedCustomer.annual_spend
+    try {
+      const response = await fetch(`/api/customers/${editingCustomer.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: updatedCustomer.name,
+          type: updatedCustomer.type,
+          email: updatedCustomer.email,
+          phone: updatedCustomer.phone,
+          primaryContact: updatedCustomer.primaryContact,
+          tags: updatedCustomer.tags
+        })
       })
-      .eq('id', editingCustomer.id)
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Error updating customer:', error)
-    } else if (data) {
+      if (!response.ok) {
+        throw new Error('Failed to update customer')
+      }
+      const data = await response.json()
       setCustomers(customers.map(c => c.id === editingCustomer.id ? data : c))
+    } catch (error) {
+      console.error('Error updating customer:', error)
     }
     setEditingCustomer(null)
   }
@@ -141,7 +132,7 @@ export default function CustomersPage() {
   const filteredCustomers = customers.filter(customer =>
     customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     customer.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    customer.primary_contact?.toLowerCase().includes(searchQuery.toLowerCase())
+    customer.primaryContact?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   return (
@@ -211,8 +202,8 @@ export default function CustomersPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Customer</TableHead>
-                <TableHead>Type & Status</TableHead>
-                <TableHead>Brands</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Tags</TableHead>
                 <TableHead>Contact</TableHead>
                 <TableHead>Added</TableHead>
                 <TableHead className="w-[80px]">Actions</TableHead>
@@ -234,45 +225,37 @@ export default function CustomersPage() {
                       </Avatar>
                       <div>
                         <div className="font-medium">{customer.name}</div>
-                        {customer.primary_contact && (
+                        {customer.primaryContact && (
                           <div className="text-sm text-muted-foreground">
-                            {customer.primary_contact}
+                            {customer.primaryContact}
                           </div>
                         )}
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex flex-col gap-2">
-                      <Badge variant={getCustomerTypeVariant(customer.type)}>
-                        {customer.type}
-                      </Badge>
-                      {getSpendingTierInfo(customer.spending_tier) && (
-                        <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border w-fit ${getSpendingTierInfo(customer.spending_tier)?.color}`}>
-                          <Award className="h-3 w-3" />
-                          {getSpendingTierInfo(customer.spending_tier)?.label}
-                        </div>
-                      )}
-                    </div>
+                    <Badge variant={getCustomerTypeVariant(customer.type)}>
+                      {customer.type}
+                    </Badge>
                   </TableCell>
                   <TableCell>
-                    {customer.brands && customer.brands.length > 0 ? (
+                    {customer.tags && customer.tags.length > 0 ? (
                       <div className="flex flex-wrap gap-1 max-w-[200px]">
-                        {customer.brands.slice(0, 3).map((brand) => (
+                        {customer.tags.slice(0, 3).map((tag) => (
                           <Badge
-                            key={brand}
+                            key={tag}
                             variant="secondary"
                             className="text-xs px-2 py-0.5"
                           >
-                            {brand}
+                            {tag}
                           </Badge>
                         ))}
-                        {customer.brands.length > 3 && (
+                        {customer.tags.length > 3 && (
                           <Badge
                             variant="secondary"
                             className="text-xs px-2 py-0.5"
                           >
-                            +{customer.brands.length - 3}
+                            +{customer.tags.length - 3}
                           </Badge>
                         )}
                       </div>
@@ -296,7 +279,7 @@ export default function CustomersPage() {
                     {!customer.email && !customer.phone && '-'}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {formatDate(customer.created_at)}
+                    {formatDate(customer.createdAt)}
                   </TableCell>
                   <TableCell>
                     <Button
@@ -325,13 +308,7 @@ export default function CustomersPage() {
           isOpen={!!editingCustomer}
           onClose={() => setEditingCustomer(null)}
           onCustomerCreated={handleCustomerUpdated}
-          initialData={{
-            ...editingCustomer,
-            primaryContact: editingCustomer.primary_contact,
-            createdAt: editingCustomer.created_at,
-            spendingTier: editingCustomer.spending_tier,
-            annualSpend: editingCustomer.annual_spend
-          }}
+          initialData={editingCustomer}
           isEditing={true}
         />
       )}

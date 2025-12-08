@@ -4,7 +4,6 @@ import { Plus, Search, Filter, FolderOpen, Calendar, Pencil } from 'lucide-react
 import { useState, useEffect } from 'react'
 import { CreateProjectModal } from '@/components/projects/CreateProjectModal'
 import { formatDate } from '@/lib/utils'
-import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -21,13 +20,18 @@ import {
 
 interface Project {
   id: string
-  name: string
+  title: string
   description: string | null
   status: string
   priority: string
-  due_date: string | null
-  customer_id: string | null
-  created_at: string
+  dueDate: string | null
+  customerId: string | null
+  createdAt: string
+  customer?: {
+    id: string
+    name: string
+    type: string
+  } | null
 }
 
 interface Customer {
@@ -66,21 +70,25 @@ export default function ProjectsPage() {
   const fetchData = async () => {
     setLoading(true)
 
-    const [projectsRes, customersRes] = await Promise.all([
-      supabase.from('projects').select('*').order('created_at', { ascending: false }),
-      supabase.from('customers').select('id, name').order('name')
-    ])
+    try {
+      const [projectsRes, customersRes] = await Promise.all([
+        fetch('/api/projects'),
+        fetch('/api/customers')
+      ])
 
-    if (projectsRes.error) {
-      console.error('Error fetching projects:', projectsRes.error)
-    } else {
-      setProjects(projectsRes.data || [])
-    }
+      if (!projectsRes.ok) {
+        throw new Error('Failed to fetch projects')
+      }
+      const projectsData = await projectsRes.json()
+      setProjects(projectsData)
 
-    if (customersRes.error) {
-      console.error('Error fetching customers:', customersRes.error)
-    } else {
-      setCustomers(customersRes.data || [])
+      if (!customersRes.ok) {
+        throw new Error('Failed to fetch customers')
+      }
+      const customersData = await customersRes.json()
+      setCustomers(customersData)
+    } catch (error) {
+      console.error('Error fetching data:', error)
     }
 
     setLoading(false)
@@ -91,23 +99,26 @@ export default function ProjectsPage() {
   }, [])
 
   const handleProjectCreated = async (newProject: any) => {
-    const { data, error } = await supabase
-      .from('projects')
-      .insert([{
-        name: newProject.name,
-        description: newProject.description || null,
-        status: newProject.status || 'DRAFT',
-        priority: newProject.priority || 'MEDIUM',
-        due_date: newProject.due_date || null,
-        customer_id: newProject.customer_id || null
-      }])
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Error creating project:', error)
-    } else if (data) {
+    try {
+      const response = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newProject.title || newProject.name,
+          description: newProject.description || null,
+          status: newProject.status || 'DRAFT',
+          priority: newProject.priority || 'MEDIUM',
+          dueDate: newProject.dueDate || newProject.due_date || null,
+          customerId: newProject.customerId || newProject.customer_id || null
+        })
+      })
+      if (!response.ok) {
+        throw new Error('Failed to create project')
+      }
+      const data = await response.json()
       setProjects([data, ...projects])
+    } catch (error) {
+      console.error('Error creating project:', error)
     }
     setIsCreateModalOpen(false)
   }
@@ -115,24 +126,26 @@ export default function ProjectsPage() {
   const handleProjectUpdated = async (updatedProject: any) => {
     if (!editingProject) return
 
-    const { data, error } = await supabase
-      .from('projects')
-      .update({
-        name: updatedProject.name,
-        description: updatedProject.description,
-        status: updatedProject.status,
-        priority: updatedProject.priority,
-        due_date: updatedProject.due_date,
-        customer_id: updatedProject.customer_id
+    try {
+      const response = await fetch(`/api/projects/${editingProject.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: updatedProject.title || updatedProject.name,
+          description: updatedProject.description,
+          status: updatedProject.status,
+          priority: updatedProject.priority,
+          dueDate: updatedProject.dueDate || updatedProject.due_date,
+          customerId: updatedProject.customerId || updatedProject.customer_id
+        })
       })
-      .eq('id', editingProject.id)
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Error updating project:', error)
-    } else if (data) {
+      if (!response.ok) {
+        throw new Error('Failed to update project')
+      }
+      const data = await response.json()
       setProjects(projects.map(p => p.id === editingProject.id ? data : p))
+    } catch (error) {
+      console.error('Error updating project:', error)
     }
     setEditingProject(null)
   }
@@ -142,14 +155,15 @@ export default function ProjectsPage() {
     setEditingProject(project)
   }
 
-  const getCustomerName = (customerId: string | null) => {
-    if (!customerId) return null
-    const customer = customers.find(c => c.id === customerId)
+  const getCustomerName = (project: Project) => {
+    if (project.customer?.name) return project.customer.name
+    if (!project.customerId) return null
+    const customer = customers.find(c => c.id === project.customerId)
     return customer?.name || null
   }
 
   const filteredProjects = projects.filter(project =>
-    project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     project.description?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
@@ -229,7 +243,7 @@ export default function ProjectsPage() {
             </TableHeader>
             <TableBody>
               {filteredProjects.map((project) => {
-                const customerName = getCustomerName(project.customer_id)
+                const customerName = getCustomerName(project)
                 return (
                   <TableRow key={project.id}>
                     <TableCell>
@@ -237,7 +251,7 @@ export default function ProjectsPage() {
                         href={`/projects/${project.id}`}
                         className="block hover:underline"
                       >
-                        <div className="font-medium">{project.name}</div>
+                        <div className="font-medium">{project.title}</div>
                         {project.description && (
                           <div className="text-sm text-muted-foreground mt-1 line-clamp-1">
                             {project.description}
@@ -272,7 +286,7 @@ export default function ProjectsPage() {
                     <TableCell>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="h-3 w-3" />
-                        {project.due_date ? formatDate(project.due_date) : '-'}
+                        {project.dueDate ? formatDate(project.dueDate) : '-'}
                       </div>
                     </TableCell>
                     <TableCell>

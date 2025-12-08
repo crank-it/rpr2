@@ -5,7 +5,6 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { CreateCampaignModal } from '@/components/campaigns/CreateCampaignModal'
 import { formatDate } from '@/lib/utils'
-import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -18,11 +17,11 @@ interface Campaign {
   description: string | null
   audience: string
   status: string
-  launch_date: string | null
-  end_date: string | null
+  launchDate: string | null
+  endDate: string | null
   budget: number | null
-  progress: number
-  created_at: string
+  progress?: number
+  createdAt: string
 }
 
 export default function CampaignsPage() {
@@ -42,39 +41,41 @@ export default function CampaignsPage() {
 
   const fetchCampaigns = async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('campaigns')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (error) {
+    try {
+      const response = await fetch('/api/campaigns')
+      if (!response.ok) {
+        throw new Error('Failed to fetch campaigns')
+      }
+      const data = await response.json()
+      setCampaigns(data)
+    } catch (error) {
       console.error('Error fetching campaigns:', error)
-    } else {
-      setCampaigns(data || [])
     }
     setLoading(false)
   }
 
   const handleCampaignCreated = async (newCampaign: any) => {
-    const { data, error } = await supabase
-      .from('campaigns')
-      .insert([{
-        name: newCampaign.name,
-        description: newCampaign.description || null,
-        audience: newCampaign.audience || 'BOTH',
-        status: newCampaign.status || 'DRAFT',
-        launch_date: newCampaign.launch_date || null,
-        end_date: newCampaign.end_date || null,
-        budget: newCampaign.budget || null,
-        progress: newCampaign.progress || 0
-      }])
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Error creating campaign:', error)
-    } else if (data) {
+    try {
+      const response = await fetch('/api/campaigns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newCampaign.name,
+          description: newCampaign.description || null,
+          audience: newCampaign.audience || 'BOTH',
+          status: newCampaign.status || 'DRAFT',
+          launchDate: newCampaign.launchDate || newCampaign.launch_date || null,
+          endDate: newCampaign.endDate || newCampaign.end_date || null,
+          budget: newCampaign.budget || null
+        })
+      })
+      if (!response.ok) {
+        throw new Error('Failed to create campaign')
+      }
+      const data = await response.json()
       setCampaigns([data, ...campaigns])
+    } catch (error) {
+      console.error('Error creating campaign:', error)
     }
     setIsCreateModalOpen(false)
   }
@@ -82,26 +83,27 @@ export default function CampaignsPage() {
   const handleCampaignUpdated = async (updatedCampaign: any) => {
     if (!editingCampaign) return
 
-    const { data, error } = await supabase
-      .from('campaigns')
-      .update({
-        name: updatedCampaign.name,
-        description: updatedCampaign.description,
-        audience: updatedCampaign.audience,
-        status: updatedCampaign.status,
-        launch_date: updatedCampaign.launch_date,
-        end_date: updatedCampaign.end_date,
-        budget: updatedCampaign.budget,
-        progress: updatedCampaign.progress
+    try {
+      const response = await fetch(`/api/campaigns/${editingCampaign.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: updatedCampaign.name,
+          description: updatedCampaign.description,
+          audience: updatedCampaign.audience,
+          status: updatedCampaign.status,
+          launchDate: updatedCampaign.launchDate || updatedCampaign.launch_date,
+          endDate: updatedCampaign.endDate || updatedCampaign.end_date,
+          budget: updatedCampaign.budget
+        })
       })
-      .eq('id', editingCampaign.id)
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Error updating campaign:', error)
-    } else if (data) {
+      if (!response.ok) {
+        throw new Error('Failed to update campaign')
+      }
+      const data = await response.json()
       setCampaigns(campaigns.map(c => c.id === editingCampaign.id ? data : c))
+    } catch (error) {
+      console.error('Error updating campaign:', error)
     }
     setEditingCampaign(null)
   }
@@ -131,9 +133,9 @@ export default function CampaignsPage() {
     return variants[audience] || 'secondary'
   }
 
-  const getDaysUntilLaunch = (launchDate: string | null) => {
-    if (!mounted || !launchDate) return '-'
-    const days = Math.ceil((new Date(launchDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  const getDaysUntilLaunch = (date: string | null) => {
+    if (!mounted || !date) return '-'
+    const days = Math.ceil((new Date(date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     if (days < 0) return 'Launched'
     if (days === 0) return 'Today'
     if (days === 1) return 'Tomorrow'
@@ -268,10 +270,10 @@ export default function CampaignsPage() {
                     )}
 
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      {campaign.launch_date && (
+                      {campaign.launchDate && (
                         <div className="flex items-center gap-1.5">
                           <CalendarIcon className="h-4 w-4" />
-                          <span>Launch: {formatDate(campaign.launch_date)}</span>
+                          <span>Launch: {formatDate(campaign.launchDate)}</span>
                         </div>
                       )}
                       {campaign.budget && (
@@ -285,14 +287,14 @@ export default function CampaignsPage() {
 
                   <div className="ml-6 text-right">
                     <div className="text-2xl font-semibold mb-1">
-                      {getDaysUntilLaunch(campaign.launch_date)}
+                      {getDaysUntilLaunch(campaign.launchDate)}
                     </div>
                     <div className="text-xs text-muted-foreground mb-3">to launch</div>
                   </div>
                 </div>
 
                 {/* Progress Bar */}
-                {campaign.progress > 0 && (
+                {campaign.progress && campaign.progress > 0 && (
                   <>
                     <Separator className="my-4" />
                     <div>

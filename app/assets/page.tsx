@@ -5,7 +5,6 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { UploadAssetModal } from '@/components/assets/UploadAssetModal'
 import { formatDate } from '@/lib/utils'
-import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -18,11 +17,11 @@ interface Asset {
   url: string
   description: string | null
   tags: string[]
-  thumbnail_url: string | null
-  uploaded_by: string
-  downloads: number
-  views: number
-  created_at: string
+  thumbnailUrl?: string | null
+  uploadedBy: string
+  downloads?: number
+  views?: number
+  createdAt: string
 }
 
 export default function AssetsPage() {
@@ -35,15 +34,15 @@ export default function AssetsPage() {
 
   const fetchAssets = async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('assets')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (error) {
+    try {
+      const response = await fetch('/api/assets')
+      if (!response.ok) {
+        throw new Error('Failed to fetch assets')
+      }
+      const data = await response.json()
+      setAssets(data)
+    } catch (error) {
       console.error('Error fetching assets:', error)
-    } else {
-      setAssets(data || [])
     }
     setLoading(false)
   }
@@ -53,26 +52,25 @@ export default function AssetsPage() {
   }, [])
 
   const handleAssetUploaded = async (newAsset: any) => {
-    const { data, error } = await supabase
-      .from('assets')
-      .insert([{
-        name: newAsset.name,
-        type: newAsset.type || 'IMAGE',
-        url: newAsset.url || '',
-        description: newAsset.description || null,
-        tags: newAsset.tags || [],
-        thumbnail_url: newAsset.thumbnail_url || null,
-        uploaded_by: 'Rebecca',
-        downloads: 0,
-        views: 0
-      }])
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Error creating asset:', error)
-    } else if (data) {
+    try {
+      const response = await fetch('/api/assets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newAsset.name,
+          type: newAsset.type || 'IMAGE',
+          url: newAsset.url || '',
+          description: newAsset.description || null,
+          tags: newAsset.tags || []
+        })
+      })
+      if (!response.ok) {
+        throw new Error('Failed to create asset')
+      }
+      const data = await response.json()
       setAssets([data, ...assets])
+    } catch (error) {
+      console.error('Error creating asset:', error)
     }
     setIsUploadModalOpen(false)
   }
@@ -80,24 +78,25 @@ export default function AssetsPage() {
   const handleAssetUpdated = async (updatedAsset: any) => {
     if (!editingAsset) return
 
-    const { data, error } = await supabase
-      .from('assets')
-      .update({
-        name: updatedAsset.name,
-        type: updatedAsset.type,
-        url: updatedAsset.url,
-        description: updatedAsset.description,
-        tags: updatedAsset.tags,
-        thumbnail_url: updatedAsset.thumbnail_url
+    try {
+      const response = await fetch(`/api/assets/${editingAsset.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: updatedAsset.name,
+          type: updatedAsset.type,
+          url: updatedAsset.url,
+          description: updatedAsset.description,
+          tags: updatedAsset.tags
+        })
       })
-      .eq('id', editingAsset.id)
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Error updating asset:', error)
-    } else if (data) {
+      if (!response.ok) {
+        throw new Error('Failed to update asset')
+      }
+      const data = await response.json()
       setAssets(assets.map(a => a.id === editingAsset.id ? data : a))
+    } catch (error) {
+      console.error('Error updating asset:', error)
     }
     setEditingAsset(null)
   }
@@ -253,8 +252,8 @@ export default function AssetsPage() {
 
                 {/* Meta */}
                 <div className="flex items-center justify-between pt-3 border-t text-xs text-muted-foreground">
-                  <span>Uploaded by {asset.uploaded_by}</span>
-                  <span>{formatDate(asset.created_at)}</span>
+                  <span>Uploaded by {asset.uploadedBy}</span>
+                  <span>{formatDate(asset.createdAt)}</span>
                 </div>
               </div>
             </Card>

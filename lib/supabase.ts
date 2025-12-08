@@ -72,7 +72,21 @@ export interface Comment {
   content: string
   entity_type: 'CUSTOMER' | 'PROJECT' | 'CAMPAIGN' | 'ASSET'
   entity_id: string
+  author_id: string | null
   author_name: string
   created_at: string
   updated_at: string
+}
+
+export interface User {
+  id: string
+  name: string | null
+  email: string | null
+  role: 'superadmin' | 'admin' | 'user'
+  status: 'pending' | 'active' | 'rejected' | 'deactivated'
+  image_url: string | null
+  approved_by: string | null
+  approved_at: string | null
+  created_at: string
+  updated_at: string | null
 }
