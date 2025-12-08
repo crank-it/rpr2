@@ -36,6 +36,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
 
+    // Handle both snake_case (from form) and camelCase field names
     const customer = await prisma.customer.create({
       data: {
         name: body.name,
@@ -45,9 +46,12 @@ export async function POST(request: Request) {
         website: body.website || null,
         address: body.address || null,
         notes: body.notes || null,
-        primaryContact: body.primaryContact || null,
+        primaryContact: body.primaryContact || body.primary_contact || null,
         accountManager: body.accountManager || null,
-        tags: body.tags || []
+        tags: body.tags || [],
+        brands: body.brands || [],
+        spendingTier: body.spendingTier || body.spending_tier || null,
+        annualSpend: body.annualSpend || body.annual_spend || null
       }
     })
 

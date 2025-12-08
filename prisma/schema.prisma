@@ -45,6 +45,13 @@ enum CampaignAudience {
   BOTH
 }
 
+// Spending tier enum
+enum SpendingTier {
+  TOP_1
+  TOP_3
+  TOP_10
+}
+
 // Core Models
 model Customer {
   id            String        @id @default(cuid())
@@ -59,6 +66,11 @@ model Customer {
 
   primaryContact   String?
   accountManager   String?
+
+  // Business fields
+  brands        String[]      @default([])
+  spendingTier  SpendingTier?
+  annualSpend   Float?
 
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt

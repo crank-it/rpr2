@@ -395,7 +395,7 @@ export default function UserManagementPage() {
             <li>• Change user roles & status</li>
             <li>• All core features</li>
           </ul>
-          <p className="text-xs text-gray-400 mt-2">Cannot assign Superadmin role</p>
+          {/* <p className="text-xs text-gray-400 mt-2">Cannot assign Superadmin role</p> */}
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">

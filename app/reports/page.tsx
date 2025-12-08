@@ -1,62 +1,71 @@
 'use client'
 
-import { DollarSign, TrendingUp, Target, BarChart3, ArrowUp, ArrowDown, LineChart, Users, Calendar, Download, Mail, Settings } from 'lucide-react'
-import { useState } from 'react'
+import { TrendingUp, BarChart3, LineChart, Calendar, Download, LayoutDashboard } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
+
+interface Campaign {
+  id: string
+  name: string
+  status: string
+  progress?: number
+  budget: number | null
+}
+
+interface ReportData {
+  campaigns: Campaign[]
+  stats: {
+    totalCampaigns: number
+    activeCampaigns: number
+    totalBudget: number
+  }
+}
 
 export default function ReportsPage() {
   const [timeframe, setTimeframe] = useState('30d')
+  const [data, setData] = useState<ReportData | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const stats = [
-    {
-      title: 'Total Revenue',
-      value: '$47,382',
-      change: '+12.3%',
-      period: 'vs last month',
-      icon: DollarSign,
-      trend: 'up' as const
-    },
-    {
-      title: 'Site Traffic',
-      value: '23.4K',
-      change: '+8.7%',
-      period: 'sessions',
-      icon: TrendingUp,
-      trend: 'up' as const
-    },
-    {
-      title: 'Conversion Rate',
-      value: '3.42%',
-      change: '+0.3%',
-      period: 'all channels',
-      icon: Target,
-      trend: 'up' as const
-    },
-    {
-      title: 'Ad Spend ROI',
-      value: '4.2x',
-      change: '+1.1x',
-      period: 'blended',
-      icon: BarChart3,
-      trend: 'up' as const
-    },
-  ]
+  useEffect(() => {
+    fetchReportData()
+  }, [])
 
-  const channels = [
-    { name: 'Organic Search', value: 45, sessions: '10.5K', revenue: '$18,240' },
-    { name: 'Google Ads', value: 28, sessions: '6.5K', revenue: '$15,890' },
-    { name: 'Social Media', value: 18, sessions: '4.2K', revenue: '$8,450' },
-    { name: 'Direct', value: 9, sessions: '2.1K', revenue: '$4,802' },
-  ]
+  const fetchReportData = async () => {
+    try {
+      const response = await fetch('/api/campaigns')
+      if (response.ok) {
+        const campaigns = await response.json()
 
-  const campaigns = [
-    { name: 'Summer Collection 2024', status: 'active', progress: 75, budget: '$45K' },
-    { name: 'VIP Salon Program', status: 'planning', progress: 30, budget: '$25K' },
-    { name: 'Instagram Influencer', status: 'active', progress: 60, budget: '$35K' },
-  ]
+        const activeCampaigns = campaigns.filter((c: Campaign) => c.status === 'ACTIVE')
+        const totalBudget = campaigns.reduce((sum: number, c: Campaign) => sum + (c.budget || 0), 0)
+
+        setData({
+          campaigns,
+          stats: {
+            totalCampaigns: campaigns.length,
+            activeCampaigns: activeCampaigns.length,
+            totalBudget
+          }
+        })
+      }
+    } catch (error) {
+      console.error('Failed to fetch report data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin h-8 w-8 border-4 border-teal-600 rounded-full border-t-transparent" />
+      </div>
+    )
+  }
+
+  const hasData = data && data.campaigns.length > 0
 
   return (
     <div className="space-y-6">
@@ -79,76 +88,83 @@ export default function ReportsPage() {
             <option value="90d">Last 90 days</option>
             <option value="12m">Last 12 months</option>
           </select>
-          <Button variant="outline">
+          <Button variant="outline" disabled={!hasData}>
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
         </div>
       </div>
 
-      {/* Hero Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => (
-          <Card key={stat.title}>
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
-                  <p className="text-2xl font-semibold">{stat.value}</p>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-semibold flex items-center gap-1 ${
-                      stat.trend === 'up' ? 'text-emerald-600' : 'text-red-600'
-                    }`}>
-                      {stat.trend === 'up' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-                      {stat.change}
-                    </span>
-                    <span className="text-xs text-muted-foreground">{stat.period}</span>
-                  </div>
-                </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100">
-                  <stat.icon className="h-6 w-6 text-gray-600" />
-                </div>
+      {/* Summary Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground">Total Campaigns</p>
+                <p className="text-2xl font-semibold">{data?.stats.totalCampaigns ?? 0}</p>
               </div>
-            </CardContent>
-          </Card>
-        ))}
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100">
+                <Calendar className="h-6 w-6 text-gray-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground">Active Campaigns</p>
+                <p className="text-2xl font-semibold">{data?.stats.activeCampaigns ?? 0}</p>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100">
+                <TrendingUp className="h-6 w-6 text-gray-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground">Total Budget</p>
+                <p className="text-2xl font-semibold">
+                  {data?.stats.totalBudget ? `$${data.stats.totalBudget.toLocaleString()}` : '$0'}
+                </p>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100">
+                <BarChart3 className="h-6 w-6 text-gray-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Revenue by Channel */}
+        {/* Analytics Placeholder */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <LineChart className="h-5 w-5" />
-              Revenue by Channel
+              Revenue & Traffic
             </CardTitle>
-            <CardDescription>Performance breakdown by traffic source</CardDescription>
+            <CardDescription>Connect analytics to see performance data</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {channels.map((channel) => (
-                <div key={channel.name} className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">{channel.name}</span>
-                    <div className="flex items-center gap-4 text-muted-foreground">
-                      <span>{channel.sessions}</span>
-                      <span className="font-semibold text-gray-900">{channel.revenue}</span>
-                    </div>
-                  </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2">
-                    <div
-                      className="bg-teal-500 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${channel.value}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 mb-4">
+                <LineChart className="h-8 w-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">No Analytics Data</h3>
+              <p className="text-sm text-muted-foreground max-w-sm">
+                Connect your analytics platform to view revenue and traffic metrics here.
+              </p>
             </div>
           </CardContent>
         </Card>
 
-        {/* Traffic Sources */}
+        {/* Traffic Sources Placeholder */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -158,35 +174,19 @@ export default function ReportsPage() {
             <CardDescription>Session distribution by channel</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-6">
-              <div className="text-center py-6">
-                <p className="text-4xl font-semibold mb-2">23.4K</p>
-                <p className="text-sm text-muted-foreground">Total Sessions</p>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 mb-4">
+                <BarChart3 className="h-8 w-8 text-gray-400" />
               </div>
-              <Separator />
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <p className="text-2xl font-semibold">45%</p>
-                  <p className="text-sm text-muted-foreground">Organic</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-semibold">28%</p>
-                  <p className="text-sm text-muted-foreground">Paid</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-semibold">18%</p>
-                  <p className="text-sm text-muted-foreground">Social</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-semibold">9%</p>
-                  <p className="text-sm text-muted-foreground">Direct</p>
-                </div>
-              </div>
+              <h3 className="text-lg font-semibold mb-2">No Traffic Data</h3>
+              <p className="text-sm text-muted-foreground max-w-sm">
+                Traffic source data will appear here once analytics is connected.
+              </p>
             </div>
           </CardContent>
         </Card>
 
-        {/* SEO Performance */}
+        {/* SEO Placeholder */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -196,75 +196,73 @@ export default function ReportsPage() {
             <CardDescription>Search engine performance metrics</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-lg border border-emerald-100">
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Avg. Position</p>
-                  <p className="text-2xl font-semibold text-emerald-600">12.4</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium text-emerald-600 flex items-center gap-1">
-                    <ArrowUp className="h-3 w-3" />
-                    +2.3
-                  </p>
-                  <p className="text-xs text-muted-foreground">vs last month</p>
-                </div>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 mb-4">
+                <TrendingUp className="h-8 w-8 text-gray-400" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Keywords Tracked</p>
-                  <p className="text-2xl font-semibold">45</p>
-                </div>
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Top 10 Rankings</p>
-                  <p className="text-2xl font-semibold">12</p>
-                </div>
-              </div>
+              <h3 className="text-lg font-semibold mb-2">No SEO Data</h3>
+              <p className="text-sm text-muted-foreground max-w-sm">
+                Connect SEO tools to track keyword rankings and visibility.
+              </p>
             </div>
           </CardContent>
         </Card>
 
-        {/* Campaign Performance */}
+        {/* Campaign Performance - Dynamic */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
-              Active Campaigns
+              Campaign Progress
             </CardTitle>
-            <CardDescription>Current campaign progress</CardDescription>
+            <CardDescription>Current campaign status</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {campaigns.map((campaign) => (
-                <div key={campaign.name} className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
+            {hasData ? (
+              <div className="space-y-4">
+                {data.campaigns.slice(0, 5).map((campaign) => (
+                  <div key={campaign.id} className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{campaign.name}</span>
+                        <Badge variant={campaign.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-xs">
+                          {campaign.status}
+                        </Badge>
+                      </div>
+                      {campaign.budget && (
+                        <span className="text-muted-foreground">${campaign.budget.toLocaleString()}</span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">{campaign.name}</span>
-                      <Badge variant={campaign.status === 'active' ? 'default' : 'secondary'} className="text-xs">
-                        {campaign.status}
-                      </Badge>
+                      <div className="flex-1 bg-gray-100 rounded-full h-2">
+                        <div
+                          className="bg-teal-500 h-2 rounded-full transition-all"
+                          style={{ width: `${campaign.progress || 0}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-muted-foreground w-10 text-right">{campaign.progress || 0}%</span>
                     </div>
-                    <span className="text-muted-foreground">{campaign.budget}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 bg-gray-100 rounded-full h-2">
-                      <div
-                        className="bg-teal-500 h-2 rounded-full transition-all"
-                        style={{ width: `${campaign.progress}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-muted-foreground w-10 text-right">{campaign.progress}%</span>
-                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 mb-4">
+                  <Calendar className="h-8 w-8 text-gray-400" />
                 </div>
-              ))}
-            </div>
+                <h3 className="text-lg font-semibold mb-2">No Campaigns</h3>
+                <p className="text-sm text-muted-foreground max-w-sm">
+                  Create campaigns to track their progress here.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="cursor-pointer card-hover">
+        <Card className="cursor-pointer card-hover opacity-50">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold">Export Report</h3>
@@ -272,31 +270,31 @@ export default function ReportsPage() {
                 <BarChart3 className="h-5 w-5 text-gray-600" />
               </div>
             </div>
-            <p className="text-sm text-muted-foreground">Download detailed analytics report</p>
+            <p className="text-sm text-muted-foreground">Available when data is present</p>
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer card-hover">
+        <Card className="cursor-pointer card-hover opacity-50">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold">Schedule Report</h3>
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
-                <Mail className="h-5 w-5 text-gray-600" />
+                <Calendar className="h-5 w-5 text-gray-600" />
               </div>
             </div>
             <p className="text-sm text-muted-foreground">Set up automated email reports</p>
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer card-hover">
+        <Card className="cursor-pointer card-hover opacity-50">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold">Custom Dashboard</h3>
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
-                <Settings className="h-5 w-5 text-gray-600" />
+                <LayoutDashboard className="h-5 w-5 text-gray-600" />
               </div>
             </div>
-            <p className="text-sm text-muted-foreground">Create personalized views</p>
+            <p className="text-sm text-muted-foreground">Coming soon</p>
           </CardContent>
         </Card>
       </div>

@@ -72,19 +72,12 @@ export default function CustomersPage() {
     fetchCustomers()
   }, [])
 
-  const handleCustomerCreated = async (newCustomer: Partial<Customer>) => {
+  const handleCustomerCreated = async (newCustomer: any) => {
     try {
       const response = await fetch('/api/customers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newCustomer.name,
-          type: newCustomer.type || 'SALON',
-          email: newCustomer.email || null,
-          phone: newCustomer.phone || null,
-          primaryContact: newCustomer.primaryContact || null,
-          tags: newCustomer.tags || []
-        })
+        body: JSON.stringify(newCustomer)
       })
       if (!response.ok) {
         throw new Error('Failed to create customer')
@@ -97,21 +90,14 @@ export default function CustomersPage() {
     setIsCreateModalOpen(false)
   }
 
-  const handleCustomerUpdated = async (updatedCustomer: Partial<Customer>) => {
+  const handleCustomerUpdated = async (updatedCustomer: any) => {
     if (!editingCustomer) return
 
     try {
       const response = await fetch(`/api/customers/${editingCustomer.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: updatedCustomer.name,
-          type: updatedCustomer.type,
-          email: updatedCustomer.email,
-          phone: updatedCustomer.phone,
-          primaryContact: updatedCustomer.primaryContact,
-          tags: updatedCustomer.tags
-        })
+        body: JSON.stringify(updatedCustomer)
       })
       if (!response.ok) {
         throw new Error('Failed to update customer')
@@ -155,10 +141,10 @@ export default function CustomersPage() {
       <Card className="p-4">
         <div className="flex gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
             <Input
               placeholder="Search customers..."
-              className="pl-9"
+              className="pl-14"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />

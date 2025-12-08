@@ -17,19 +17,17 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-accent: var(--accent);
+  --color-accent-muted: var(--accent-muted);
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #fafafa;
-    --muted: #262626;
-    --muted-foreground: #a3a3a3;
-    --border: #262626;
-    --input: #262626;
-  }
-}
+/* Dark mode disabled - app uses light theme only */
 
 body {
   background: var(--background);
@@ -88,7 +86,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Form Input Styles */
 .luxury-input {
-  @apply w-full px-4 py-3 text-sm bg-white border border-gray-200 rounded-lg;
+  @apply w-full px-4 py-3 text-sm bg-white text-gray-900 border border-gray-200 rounded-lg;
   @apply transition-all duration-200;
   @apply placeholder:text-gray-400;
   @apply focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500;
