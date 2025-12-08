@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Download, Eye, Calendar, Tag, FolderOpen, Pencil, Image as ImageIcon, FileText, Video, File } from 'lucide-react'
@@ -8,82 +8,85 @@ import { CommentThread } from '@/components/comments/CommentThread'
 import { UploadAssetModal } from '@/components/assets/UploadAssetModal'
 import { formatDate } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 
-const DEMO_ASSETS = [
-  {
-    id: '1',
-    name: 'Summer Collection Hero Banner',
-    type: 'IMAGE',
-    url: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800&q=80',
-    description: 'Main hero image for summer campaign landing page',
-    tags: ['summer', 'hero', 'banner', 'campaign'],
-    collection: 'Summer 2024',
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    downloads: 45,
-    views: 234,
-    fileSize: '2.4 MB',
-    dimensions: '1920x1080',
-    uploadedBy: 'Sarah Mitchell'
-  },
-  {
-    id: '2',
-    name: 'Product Photography - Color Line',
-    type: 'IMAGE',
-    url: 'https://images.unsplash.com/photo-1522338242992-e1a54906a8da?w=800&q=80',
-    description: 'Professional product shots of new color collection',
-    tags: ['product', 'photography', 'color', 'premium'],
-    collection: 'Summer 2024',
-    createdAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
-    downloads: 128,
-    views: 567,
-    fileSize: '3.1 MB',
-    dimensions: '2400x1600',
-    uploadedBy: 'Ben Thompson'
-  },
-  {
-    id: '3',
-    name: 'Salon Training Video',
-    type: 'VIDEO',
-    url: '',
-    description: 'Step-by-step application techniques for stylist education',
-    tags: ['training', 'education', 'salon', 'tutorial'],
-    collection: 'Training Materials',
-    createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
-    downloads: 89,
-    views: 412,
-    fileSize: '145 MB',
-    duration: '12:34',
-    uploadedBy: 'Michael Chen'
-  },
-  {
-    id: '4',
-    name: 'Brand Guidelines 2024',
-    type: 'DOCUMENT',
-    url: '',
-    description: 'Complete brand identity and usage guidelines',
-    tags: ['brand', 'guidelines', 'identity', 'assets'],
-    collection: 'Brand Assets',
-    createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
-    downloads: 234,
-    views: 1045,
-    fileSize: '8.7 MB',
-    pages: 42,
-    uploadedBy: 'Sarah Mitchell'
-  }
-]
+interface Asset {
+  id: string
+  name: string
+  type: string
+  url: string
+  thumbnailUrl?: string | null
+  description: string | null
+  tags: string[]
+  collection?: string | null
+  projectId?: string | null
+  campaignId?: string | null
+  downloads: number
+  views: number
+  uploadedBy: string
+  createdAt: string
+  updatedAt: string
+}
 
 export default function AssetDetailPage() {
   const params = useParams()
   const assetId = params.id as string
-  const asset = DEMO_ASSETS.find(a => a.id === assetId) || DEMO_ASSETS[0]
+  const [asset, setAsset] = useState<Asset | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
-  const handleAssetUpdated = (updatedAsset: any) => {
-    // In a real app, this would update the asset in state/database
-    console.log('Asset updated:', updatedAsset)
+  const fetchAsset = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await fetch(`/api/assets/${assetId}`)
+      if (!response.ok) {
+        if (response.status === 404) {
+          setError('Asset not found')
+        } else {
+          throw new Error('Failed to fetch asset')
+        }
+        return
+      }
+      const data = await response.json()
+      setAsset(data)
+    } catch (error) {
+      console.error('Error fetching asset:', error)
+      setError('Failed to load asset')
+    }
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    if (assetId) {
+      fetchAsset()
+    }
+  }, [assetId])
+
+  const handleAssetUpdated = async (updatedAsset: any) => {
+    try {
+      const response = await fetch(`/api/assets/${assetId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: updatedAsset.name,
+          type: updatedAsset.type,
+          url: updatedAsset.url,
+          description: updatedAsset.description,
+          tags: updatedAsset.tags
+        })
+      })
+      if (!response.ok) {
+        throw new Error('Failed to update asset')
+      }
+      const data = await response.json()
+      setAsset(data)
+    } catch (error) {
+      console.error('Error updating asset:', error)
+    }
     setIsEditModalOpen(false)
   }
 
@@ -94,11 +97,55 @@ export default function AssetDetailPage() {
       case 'VIDEO':
         return <Video className="h-6 w-6" />
       case 'DOCUMENT':
-      case 'PRESENTATION':
+      case 'PDF':
         return <FileText className="h-6 w-6" />
       default:
         return <File className="h-6 w-6" />
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Link
+          href="/assets"
+          className="inline-flex items-center text-sm text-muted-foreground hover:text-gray-900 mb-4"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Assets
+        </Link>
+        <Card className="p-12 text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-gray-900 border-r-transparent"></div>
+          <p className="mt-4 text-sm text-muted-foreground">Loading asset...</p>
+        </Card>
+      </div>
+    )
+  }
+
+  if (error || !asset) {
+    return (
+      <div className="space-y-6">
+        <Link
+          href="/assets"
+          className="inline-flex items-center text-sm text-muted-foreground hover:text-gray-900 mb-4"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Assets
+        </Link>
+        <Card className="p-12 text-center">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gray-100 mx-auto mb-4">
+            <ImageIcon className="h-10 w-10 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-semibold mb-2">{error || 'Asset not found'}</h3>
+          <p className="text-sm text-muted-foreground mb-6">
+            The asset you're looking for doesn't exist or has been removed.
+          </p>
+          <Link href="/assets">
+            <Button>View All Assets</Button>
+          </Link>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -123,7 +170,7 @@ export default function AssetDetailPage() {
             <div>
               <h1 className="text-3xl font-semibold tracking-tight mb-2">{asset.name}</h1>
               <p className="text-muted-foreground max-w-3xl">
-                {asset.description}
+                {asset.description || 'No description'}
               </p>
             </div>
           </div>
@@ -132,10 +179,14 @@ export default function AssetDetailPage() {
               <Pencil className="mr-2 h-4 w-4" />
               Edit
             </Button>
-            <Button>
-              <Download className="mr-2 h-4 w-4" />
-              Download
-            </Button>
+            {asset.url && (
+              <Button asChild>
+                <a href={asset.url} download target="_blank" rel="noopener noreferrer">
+                  <Download className="mr-2 h-4 w-4" />
+                  Download
+                </a>
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -152,7 +203,7 @@ export default function AssetDetailPage() {
                   className="w-full h-full object-contain"
                 />
               ) : (
-                <div className="text-gray-400">
+                <div className="text-gray-400 text-center">
                   {getAssetIcon(asset.type)}
                   <p className="text-sm mt-4">Preview not available</p>
                 </div>
@@ -185,40 +236,8 @@ export default function AssetDetailPage() {
               </>
             )}
             <div>
-              <p className="text-sm text-muted-foreground mb-1">File Size</p>
-              <p className="text-sm font-medium">{asset.fileSize}</p>
-            </div>
-            <Separator />
-            {asset.dimensions && (
-              <>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Dimensions</p>
-                  <p className="text-sm font-medium">{asset.dimensions}</p>
-                </div>
-                <Separator />
-              </>
-            )}
-            {asset.duration && (
-              <>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Duration</p>
-                  <p className="text-sm font-medium">{asset.duration}</p>
-                </div>
-                <Separator />
-              </>
-            )}
-            {asset.pages && (
-              <>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Pages</p>
-                  <p className="text-sm font-medium">{asset.pages}</p>
-                </div>
-                <Separator />
-              </>
-            )}
-            <div>
               <p className="text-sm text-muted-foreground mb-1">Uploaded By</p>
-              <p className="text-sm font-medium">{asset.uploadedBy}</p>
+              <p className="text-sm font-medium">{asset.uploadedBy || 'Unknown'}</p>
             </div>
             <Separator />
             <div>
@@ -233,7 +252,7 @@ export default function AssetDetailPage() {
       </div>
 
       {/* Tags */}
-      {asset.tags.length > 0 && (
+      {asset.tags && asset.tags.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -267,7 +286,7 @@ export default function AssetDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-semibold">{asset.views}</div>
+            <div className="text-2xl font-semibold">{asset.views || 0}</div>
             <p className="text-xs text-muted-foreground mt-1">Total views</p>
           </CardContent>
         </Card>
@@ -279,7 +298,7 @@ export default function AssetDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-semibold">{asset.downloads}</div>
+            <div className="text-2xl font-semibold">{asset.downloads || 0}</div>
             <p className="text-xs text-muted-foreground mt-1">Total downloads</p>
           </CardContent>
         </Card>

@@ -1,64 +1,54 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function GET() {
   try {
     // Get counts for all entities
-    const [projectCount, assetCount, campaignCount, customerCount] = await Promise.all([
-      prisma.project.count(),
-      prisma.asset.count(),
-      prisma.campaign.count(),
-      prisma.customer.count()
+    const [projectsResult, assetsResult, campaignsResult, customersResult] = await Promise.all([
+      supabase.from('projects').select('id', { count: 'exact', head: true }),
+      supabase.from('assets').select('id', { count: 'exact', head: true }),
+      supabase.from('campaigns').select('id', { count: 'exact', head: true }),
+      supabase.from('customers').select('id', { count: 'exact', head: true })
     ])
+
+    const projectCount = projectsResult.count || 0
+    const assetCount = assetsResult.count || 0
+    const campaignCount = campaignsResult.count || 0
+    const customerCount = customersResult.count || 0
 
     // Get project status counts
-    const [activeProjects, reviewProjects, completedProjects] = await Promise.all([
-      prisma.project.count({ where: { status: 'IN_PROGRESS' } }),
-      prisma.project.count({ where: { status: 'REVIEW' } }),
-      prisma.project.count({ where: { status: 'COMPLETED' } })
+    const [activeResult, reviewResult, completedResult] = await Promise.all([
+      supabase.from('projects').select('id', { count: 'exact', head: true }).eq('status', 'IN_PROGRESS'),
+      supabase.from('projects').select('id', { count: 'exact', head: true }).eq('status', 'REVIEW'),
+      supabase.from('projects').select('id', { count: 'exact', head: true }).eq('status', 'COMPLETED')
     ])
 
+    const activeProjects = activeResult.count || 0
+    const reviewProjects = reviewResult.count || 0
+    const completedProjects = completedResult.count || 0
+
     // Get recent activity
-    const recentActivity = await prisma.activity.findMany({
-      take: 5,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        project: { select: { id: true, title: true } },
-        campaign: { select: { id: true, name: true } },
-        customer: { select: { id: true, name: true } }
-      }
-    })
+    const { data: recentActivity } = await supabase
+      .from('activities')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(5)
 
     // Format activity for frontend
-    const formattedActivity = recentActivity.map((activity) => {
-      let title = activity.description || 'Activity'
-      let type = 'Activity'
-      let status = 'completed'
-
-      if (activity.project?.title) {
-        title = activity.project.title
-        type = 'Project'
-      } else if (activity.campaign?.name) {
-        title = activity.campaign.name
-        type = 'Campaign'
-      } else if (activity.customer?.name) {
-        title = activity.customer.name
-        type = 'Customer'
-      }
-
-      // Determine status from activity type
-      if (activity.type?.includes('created')) {
-        status = 'completed'
-      } else if (activity.type?.includes('updated')) {
-        status = 'in_progress'
-      }
-
+    const formattedActivity = (recentActivity || []).map((activity) => {
       return {
         id: activity.id,
-        title,
-        type,
-        status,
-        time: getRelativeTime(activity.createdAt)
+        title: activity.description || 'Activity',
+        type: activity.type?.includes('project') ? 'Project' :
+              activity.type?.includes('campaign') ? 'Campaign' :
+              activity.type?.includes('customer') ? 'Customer' : 'Activity',
+        status: activity.type?.includes('created') ? 'completed' : 'in_progress',
+        time: getRelativeTime(new Date(activity.created_at))
       }
     })
 

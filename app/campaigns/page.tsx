@@ -194,7 +194,7 @@ export default function CampaignsPage() {
             <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
             <Input
               placeholder="Search campaigns..."
-              className="pl-14"
+              className="!pl-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />

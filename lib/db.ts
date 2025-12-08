@@ -1,23 +1,17 @@
-// Prisma client placeholder
-// This app currently uses demo data, so Prisma is not required for production
+import { PrismaClient } from '@prisma/client'
 
 declare global {
-  var prisma: any | undefined
+  var prisma: PrismaClient | undefined
 }
 
-let prismaClient: any = null
-
-try {
-  // Try to dynamically import PrismaClient - only works if prisma generate was run
-  const { PrismaClient } = require('@prisma/client')
-  prismaClient = global.prisma || new PrismaClient()
-
-  if (process.env.NODE_ENV !== 'production') {
-    global.prisma = prismaClient
-  }
-} catch {
-  // PrismaClient not available - app will use demo data
-  prismaClient = null
+const prismaClientSingleton = () => {
+  return new PrismaClient({
+    datasourceUrl: process.env.DATABASE_URL,
+  })
 }
 
-export const prisma = prismaClient
+export const prisma = globalThis.prisma ?? prismaClientSingleton()
+
+if (process.env.NODE_ENV !== 'production') {
+  globalThis.prisma = prisma
+}

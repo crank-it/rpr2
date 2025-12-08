@@ -1,12 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { Upload } from 'lucide-react'
+import { Upload, X, FileIcon, ImageIcon, VideoIcon, FileTextIcon } from 'lucide-react'
 
 interface UploadAssetModalProps {
   isOpen: boolean
@@ -18,6 +18,11 @@ interface UploadAssetModalProps {
 
 export function UploadAssetModal({ isOpen, onClose, onAssetUploaded, initialData, isEditing = false }: UploadAssetModalProps) {
   const [loading, setLoading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(initialData?.url || null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   const [formData, setFormData] = useState({
     name: initialData?.name || '',
     type: initialData?.type || 'IMAGE',
@@ -27,17 +32,137 @@ export function UploadAssetModal({ isOpen, onClose, onAssetUploaded, initialData
     collection: initialData?.collection || ''
   })
 
+  const detectFileType = (file: File): string => {
+    const mimeType = file.type.toLowerCase()
+    if (mimeType.startsWith('image/')) return 'IMAGE'
+    if (mimeType.startsWith('video/')) return 'VIDEO'
+    if (mimeType === 'application/pdf') return 'PDF'
+    if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return 'PRESENTATION'
+    if (mimeType.includes('document') || mimeType.includes('word')) return 'DOCUMENT'
+    return 'DOCUMENT'
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setSelectedFile(file)
+
+      // Auto-fill name if empty
+      if (!formData.name) {
+        const nameWithoutExtension = file.name.replace(/\.[^/.]+$/, '')
+        setFormData(prev => ({ ...prev, name: nameWithoutExtension }))
+      }
+
+      // Auto-detect type
+      const detectedType = detectFileType(file)
+      setFormData(prev => ({ ...prev, type: detectedType }))
+
+      // Create preview for images
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          setPreviewUrl(e.target?.result as string)
+        }
+        reader.readAsDataURL(file)
+      } else {
+        setPreviewUrl(null)
+      }
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    const file = e.dataTransfer.files?.[0]
+    if (file) {
+      setSelectedFile(file)
+
+      if (!formData.name) {
+        const nameWithoutExtension = file.name.replace(/\.[^/.]+$/, '')
+        setFormData(prev => ({ ...prev, name: nameWithoutExtension }))
+      }
+
+      const detectedType = detectFileType(file)
+      setFormData(prev => ({ ...prev, type: detectedType }))
+
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          setPreviewUrl(e.target?.result as string)
+        }
+        reader.readAsDataURL(file)
+      } else {
+        setPreviewUrl(null)
+      }
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+  }
+
+  const removeFile = () => {
+    setSelectedFile(null)
+    setPreviewUrl(initialData?.url || null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  }
+
+  const getFileIcon = (type: string) => {
+    switch (type) {
+      case 'IMAGE':
+        return <ImageIcon className="h-8 w-8 text-blue-500" />
+      case 'VIDEO':
+        return <VideoIcon className="h-8 w-8 text-purple-500" />
+      case 'PDF':
+      case 'DOCUMENT':
+        return <FileTextIcon className="h-8 w-8 text-red-500" />
+      default:
+        return <FileIcon className="h-8 w-8 text-gray-500" />
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
     try {
+      let fileUrl = formData.url
+
+      // Upload file if selected
+      if (selectedFile) {
+        setUploadProgress('Uploading file...')
+
+        const uploadFormData = new FormData()
+        uploadFormData.append('file', selectedFile)
+
+        const uploadResponse = await fetch('/api/upload', {
+          method: 'POST',
+          body: uploadFormData
+        })
+
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.json()
+          throw new Error(errorData.details || 'Failed to upload file')
+        }
+
+        const uploadResult = await uploadResponse.json()
+        fileUrl = uploadResult.url
+        setUploadProgress('File uploaded successfully!')
+      }
+
       const tagsArray = formData.tags.split(',').map((t: string) => t.trim()).filter(Boolean)
 
       const assetData = {
         name: formData.name,
         type: formData.type,
-        url: formData.url,
+        url: fileUrl,
         description: formData.description || null,
         tags: tagsArray,
         collection: formData.collection || null
@@ -49,6 +174,7 @@ export function UploadAssetModal({ isOpen, onClose, onAssetUploaded, initialData
       }
 
       onClose()
+      // Reset form
       setFormData({
         name: '',
         type: 'IMAGE',
@@ -57,16 +183,92 @@ export function UploadAssetModal({ isOpen, onClose, onAssetUploaded, initialData
         tags: '',
         collection: ''
       })
+      setSelectedFile(null)
+      setPreviewUrl(null)
+      setUploadProgress(null)
     } catch (error) {
       console.error('Failed to upload asset:', error)
+      setUploadProgress(`Error: ${error instanceof Error ? error.message : 'Upload failed'}`)
     } finally {
       setLoading(false)
     }
   }
 
+  const canSubmit = formData.name && (selectedFile || formData.url || isEditing)
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEditing ? "Edit Asset" : "Upload Asset"} size="lg">
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* File Upload Area */}
+        {!isEditing && (
+          <div
+            className={`relative p-6 border-2 border-dashed rounded-lg text-center transition-colors ${
+              selectedFile ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-gray-400'
+            }`}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              onChange={handleFileSelect}
+              accept="image/*,video/*,application/pdf,.doc,.docx,.ppt,.pptx"
+            />
+
+            {selectedFile ? (
+              <div className="flex items-center justify-center gap-4">
+                {previewUrl && formData.type === 'IMAGE' ? (
+                  <img src={previewUrl} alt="Preview" className="h-16 w-16 object-cover rounded" />
+                ) : (
+                  getFileIcon(formData.type)
+                )}
+                <div className="text-left">
+                  <p className="font-medium text-sm truncate max-w-[200px]">{selectedFile.name}</p>
+                  <p className="text-xs text-gray-500">{formatFileSize(selectedFile.size)}</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="ml-2"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    removeFile()
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Upload className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+                <p className="text-sm font-medium text-gray-700 mb-1">
+                  Drag and drop your file here
+                </p>
+                <p className="text-xs text-gray-500">
+                  or click to browse (Images, Videos, PDFs, Documents)
+                </p>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Preview for editing */}
+        {isEditing && previewUrl && formData.type === 'IMAGE' && (
+          <div className="relative">
+            <img src={previewUrl} alt="Current" className="w-full h-40 object-contain rounded-lg bg-gray-100" />
+          </div>
+        )}
+
+        {uploadProgress && (
+          <div className={`text-sm p-3 rounded ${
+            uploadProgress.startsWith('Error') ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
+          }`}>
+            {uploadProgress}
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           <Input
             label="Asset Name"
@@ -83,6 +285,7 @@ export function UploadAssetModal({ isOpen, onClose, onAssetUploaded, initialData
             options={[
               { value: 'IMAGE', label: 'Image' },
               { value: 'VIDEO', label: 'Video' },
+              { value: 'PDF', label: 'PDF' },
               { value: 'DOCUMENT', label: 'Document' },
               { value: 'PRESENTATION', label: 'Presentation' },
               { value: 'GUIDE', label: 'Guide' },
@@ -91,24 +294,16 @@ export function UploadAssetModal({ isOpen, onClose, onAssetUploaded, initialData
           />
         </div>
 
-        <Input
-          label="Asset URL"
-          type="url"
-          placeholder="https://example.com/image.jpg"
-          value={formData.url}
-          onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-          required
-        />
-
-        <div className="p-4 border-2 border-dashed border-gray-300 rounded-md text-center">
-          <Upload className="h-12 w-12 mx-auto mb-2 text-gray-400" />
-          <p className="text-sm text-gray-600 mb-1">
-            Drag and drop files or click to browse
-          </p>
-          <p className="text-xs text-gray-500">
-            (File upload integration coming soon)
-          </p>
-        </div>
+        {/* Manual URL input (optional, for external URLs) */}
+        {!selectedFile && (
+          <Input
+            label="Or enter URL manually"
+            type="url"
+            placeholder="https://example.com/image.jpg"
+            value={formData.url}
+            onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+          />
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <Input
@@ -137,7 +332,7 @@ export function UploadAssetModal({ isOpen, onClose, onAssetUploaded, initialData
           <Button type="button" variant="outline" onClick={onClose} className="px-6">
             Cancel
           </Button>
-          <Button type="submit" disabled={loading || !formData.name || !formData.url} className="px-6">
+          <Button type="submit" disabled={loading || !canSubmit} className="px-6">
             {loading ? (isEditing ? 'Saving...' : 'Uploading...') : (isEditing ? 'Save Changes' : 'Upload Asset')}
           </Button>
         </div>

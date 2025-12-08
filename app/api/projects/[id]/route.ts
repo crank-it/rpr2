@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function GET(
   request: Request,
@@ -8,31 +13,51 @@ export async function GET(
   try {
     const { id } = await params
 
-    const project = await prisma.project.findUnique({
-      where: { id },
-      include: {
-        customer: true,
-        tasks: {
-          orderBy: { createdAt: 'desc' }
-        },
-        assets: {
-          orderBy: { createdAt: 'desc' }
-        },
-        activities: {
-          orderBy: { createdAt: 'desc' },
-          take: 20
-        }
-      }
-    })
+    const { data: project, error } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('id', id)
+      .single()
 
-    if (!project) {
+    if (error || !project) {
       return NextResponse.json(
         { error: 'Project not found' },
         { status: 404 }
       )
     }
 
-    return NextResponse.json(project)
+    // Get customer if exists
+    let customer = null
+    if (project.customer_id) {
+      const { data: customerData } = await supabase
+        .from('customers')
+        .select('id, name, type')
+        .eq('id', project.customer_id)
+        .single()
+      customer = customerData
+    }
+
+    // Transform to camelCase
+    const transformedProject = {
+      id: project.id,
+      title: project.title,
+      description: project.description,
+      status: project.status,
+      priority: project.priority,
+      dueDate: project.due_date,
+      customerId: project.customer_id,
+      owner: project.owner,
+      assignees: project.assignees || [],
+      createdAt: project.created_at,
+      updatedAt: project.updated_at,
+      completedAt: project.completed_at,
+      customer: customer,
+      tasks: [],
+      assets: [],
+      activities: []
+    }
+
+    return NextResponse.json(transformedProject)
   } catch (error) {
     console.error('Failed to fetch project:', error)
     return NextResponse.json(
@@ -50,33 +75,60 @@ export async function PATCH(
     const { id } = await params
     const body = await request.json()
 
-    const project = await prisma.project.update({
-      where: { id },
-      data: {
-        title: body.title,
-        description: body.description,
-        status: body.status,
-        priority: body.priority,
-        dueDate: body.dueDate ? new Date(body.dueDate) : null,
-        customerId: body.customerId,
-        ...(body.status === 'COMPLETED' && { completedAt: new Date() })
-      },
-      include: {
-        customer: true
-      }
-    })
+    const updateData: Record<string, unknown> = {
+      title: body.title,
+      description: body.description,
+      status: body.status,
+      priority: body.priority,
+      due_date: body.dueDate || null,
+      customer_id: body.customerId || null,
+      updated_at: new Date().toISOString()
+    }
+
+    if (body.status === 'COMPLETED') {
+      updateData.completed_at = new Date().toISOString()
+    }
+
+    const { data: project, error } = await supabase
+      .from('projects')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Failed to update project:', error)
+      return NextResponse.json(
+        { error: 'Failed to update project' },
+        { status: 500 }
+      )
+    }
 
     // Log activity
-    await prisma.activity.create({
-      data: {
-        type: 'project_updated',
-        description: `Project "${project.title}" was updated`,
-        projectId: project.id,
-        performedBy: 'System'
-      }
+    await supabase.from('activities').insert({
+      type: 'project_updated',
+      description: `Project "${project.title}" was updated`,
+      project_id: project.id,
+      performed_by: 'System'
     })
 
-    return NextResponse.json(project)
+    // Transform to camelCase
+    const transformedProject = {
+      id: project.id,
+      title: project.title,
+      description: project.description,
+      status: project.status,
+      priority: project.priority,
+      dueDate: project.due_date,
+      customerId: project.customer_id,
+      owner: project.owner,
+      assignees: project.assignees || [],
+      createdAt: project.created_at,
+      updatedAt: project.updated_at,
+      completedAt: project.completed_at
+    }
+
+    return NextResponse.json(transformedProject)
   } catch (error) {
     console.error('Failed to update project:', error)
     return NextResponse.json(
@@ -93,9 +145,18 @@ export async function DELETE(
   try {
     const { id } = await params
 
-    await prisma.project.delete({
-      where: { id }
-    })
+    const { error } = await supabase
+      .from('projects')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Failed to delete project:', error)
+      return NextResponse.json(
+        { error: 'Failed to delete project' },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

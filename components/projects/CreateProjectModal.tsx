@@ -23,7 +23,7 @@ export function CreateProjectModal({ isOpen, onClose, onProjectCreated, customer
     description: initialData?.description || '',
     status: initialData?.status || 'DRAFT',
     priority: initialData?.priority || 'MEDIUM',
-    customerId: initialData?.customer?.id || '',
+    customerId: initialData?.customerId || initialData?.customer?.id || '',
     dueDate: initialData?.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : ''
   })
 
@@ -40,6 +40,7 @@ export function CreateProjectModal({ isOpen, onClose, onProjectCreated, customer
         status: formData.status,
         priority: formData.priority,
         dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
+        customerId: formData.customerId || null,
         customer: selectedCustomer || null
       }
 
