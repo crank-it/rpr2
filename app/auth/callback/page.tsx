@@ -77,8 +77,9 @@ export default function AuthCallback() {
     checkUser();
   }, [isLoaded, user, hasChecked, router]);
 
-  const handleGoToSignUp = async () => {
-    await signOut();
+  const handleGoToSignUp = () => {
+    // Don't sign out - just redirect to sign-up to select a role
+    // The user is already authenticated, they just need to select a role
     router.replace("/sign-up");
   };
 

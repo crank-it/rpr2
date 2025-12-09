@@ -39,17 +39,28 @@ export default function SignUpPage() {
   }, []);
 
   useEffect(() => {
-    // If user is already signed in, redirect to sign-up callback to sync
+    // If user is already signed in AND has selected a role, redirect to callback
+    // Otherwise, let them stay on this page to select a role first
     if (isLoaded && user) {
-      setIsRedirecting(true);
-      router.replace("/sign-up/callback");
+      const savedRole = localStorage.getItem("signupRequestedRole");
+      if (savedRole) {
+        setIsRedirecting(true);
+        router.replace("/sign-up/callback");
+      }
+      // If no role selected, don't redirect - let them select a role first
     }
   }, [isLoaded, user, router]);
 
   const handleContinue = () => {
     if (selectedRole) {
       localStorage.setItem("signupRequestedRole", selectedRole);
-      setShowSignUp(true);
+      // If user is already signed in (came from sign-in without account), go directly to callback
+      if (user) {
+        setIsRedirecting(true);
+        router.replace("/sign-up/callback");
+      } else {
+        setShowSignUp(true);
+      }
     }
   };
 
