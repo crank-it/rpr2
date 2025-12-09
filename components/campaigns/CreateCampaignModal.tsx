@@ -142,6 +142,7 @@ export function CreateCampaignModal({ isOpen, onClose, onCampaignCreated, initia
               placeholder="Describe the campaign objectives and key messaging..."
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              required
             />
 
             <div className="grid grid-cols-2 gap-4">
@@ -154,6 +155,7 @@ export function CreateCampaignModal({ isOpen, onClose, onCampaignCreated, initia
                   { value: 'B2C', label: 'B2C (Consumers)' },
                   { value: 'BOTH', label: 'Both (Coordinated Launch)' }
                 ]}
+                required
               />
 
               <Select
@@ -265,7 +267,7 @@ export function CreateCampaignModal({ isOpen, onClose, onCampaignCreated, initia
           <Button type="button" variant="outline" onClick={onClose} className="px-6">
             Cancel
           </Button>
-          <Button type="submit" disabled={loading || !formData.name || !formData.launchDate} className="px-6">
+          <Button type="submit" disabled={loading || !formData.name || !formData.description || !formData.launchDate || !formData.audience} className="px-6">
             {loading ? (isEditing ? 'Saving...' : 'Creating...') : (isEditing ? 'Save Changes' : 'Create Campaign')}
           </Button>
         </div>

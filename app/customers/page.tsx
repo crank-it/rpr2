@@ -1,7 +1,7 @@
 'use client'
 
 import { Plus, Users as UsersIcon, Search, Filter, Mail, Phone, FolderOpen, Pencil, Trash2 } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { CreateCustomerModal } from '@/components/customers/CreateCustomerModal'
 import { formatDate } from '@/lib/utils'
@@ -28,6 +28,7 @@ interface Customer {
   primaryContact: string | null
   createdAt: string
   tags: string[]
+  brands: string[]
   _count?: {
     projects: number
     activities: number
@@ -54,6 +55,9 @@ export default function CustomersPage() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [deleteCustomer, setDeleteCustomer] = useState<Customer | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
+  const [typeFilter, setTypeFilter] = useState<string>('')
+  const filterRef = useRef<HTMLDivElement>(null)
 
   const fetchCustomers = async () => {
     setLoading(true)
@@ -72,6 +76,17 @@ export default function CustomersPage() {
 
   useEffect(() => {
     fetchCustomers()
+  }, [])
+
+  // Close filter dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+        setShowFilters(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
   const handleCustomerCreated = async (newCustomer: any) => {
@@ -142,11 +157,19 @@ export default function CustomersPage() {
     }
   }
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    customer.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    customer.primaryContact?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredCustomers = customers.filter(customer => {
+    const matchesSearch = customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      customer.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      customer.primaryContact?.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesType = !typeFilter || customer.type === typeFilter
+    return matchesSearch && matchesType
+  })
+
+  const clearFilters = () => {
+    setTypeFilter('')
+  }
+
+  const activeFiltersCount = typeFilter ? 1 : 0
 
   return (
     <div className="space-y-6">
@@ -176,10 +199,47 @@ export default function CustomersPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button variant="outline">
-            <Filter className="mr-2 h-4 w-4" />
-            Filters
-          </Button>
+          <div className="relative" ref={filterRef}>
+            <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
+              <Filter className="mr-2 h-4 w-4" />
+              Filters
+              {activeFiltersCount > 0 && (
+                <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </Button>
+            {showFilters && (
+              <div className="absolute right-0 top-full mt-2 z-50 w-64 rounded-lg border bg-white shadow-lg p-4">
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Type</label>
+                    <select
+                      value={typeFilter}
+                      onChange={(e) => setTypeFilter(e.target.value)}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="">All Types</option>
+                      <option value="SALON">Salon</option>
+                      <option value="DISTRIBUTOR">Distributor</option>
+                      <option value="CORPORATE">Corporate</option>
+                      <option value="VIP">VIP</option>
+                    </select>
+                  </div>
+                  {activeFiltersCount > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full"
+                      onClick={clearFilters}
+                    >
+                      Clear Filters
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </Card>
 
@@ -214,12 +274,12 @@ export default function CustomersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Customer</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Tags</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Added</TableHead>
-                <TableHead className="w-[80px]">Actions</TableHead>
+                <TableHead className="text-center">Customer</TableHead>
+                <TableHead className="text-center">Type</TableHead>
+                <TableHead className="text-center">Brands</TableHead>
+                <TableHead className="text-center">Contact</TableHead>
+                <TableHead className="text-center">Added</TableHead>
+                <TableHead className="w-[80px] text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -229,14 +289,14 @@ export default function CustomersPage() {
                   className="cursor-pointer"
                   onClick={() => router.push(`/customers/${customer.id}`)}
                 >
-                  <TableCell>
-                    <div className="flex items-center gap-3">
+                  <TableCell className="text-center">
+                    <div className="flex items-center justify-center gap-3">
                       <Avatar className="h-9 w-9">
                         <AvatarFallback className="text-sm">
                           {customer.name.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
-                      <div>
+                      <div className="text-left">
                         <div className="font-medium">{customer.name}</div>
                         {customer.primaryContact && (
                           <div className="text-sm text-muted-foreground">
@@ -246,29 +306,29 @@ export default function CustomersPage() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-center">
                     <Badge variant={getCustomerTypeVariant(customer.type)}>
                       {customer.type}
                     </Badge>
                   </TableCell>
-                  <TableCell>
-                    {customer.tags && customer.tags.length > 0 ? (
-                      <div className="flex flex-wrap gap-1 max-w-[200px]">
-                        {customer.tags.slice(0, 3).map((tag) => (
+                  <TableCell className="text-center">
+                    {customer.brands && customer.brands.length > 0 ? (
+                      <div className="flex flex-wrap justify-center gap-1 max-w-[200px] mx-auto">
+                        {customer.brands.slice(0, 3).map((brand) => (
                           <Badge
-                            key={tag}
+                            key={brand}
                             variant="secondary"
                             className="text-xs px-2 py-0.5"
                           >
-                            {tag}
+                            {brand}
                           </Badge>
                         ))}
-                        {customer.tags.length > 3 && (
+                        {customer.brands.length > 3 && (
                           <Badge
                             variant="secondary"
                             className="text-xs px-2 py-0.5"
                           >
-                            +{customer.tags.length - 3}
+                            +{customer.brands.length - 3}
                           </Badge>
                         )}
                       </div>
@@ -276,26 +336,26 @@ export default function CustomersPage() {
                       <span className="text-sm text-muted-foreground">-</span>
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-center">
                     {customer.email && (
-                      <div className="flex items-center gap-2 text-sm">
+                      <div className="flex items-center justify-center gap-2 text-sm">
                         <Mail className="h-3 w-3 text-gray-400" />
                         <span className="truncate max-w-[200px]">{customer.email}</span>
                       </div>
                     )}
                     {customer.phone && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                      <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mt-1">
                         <Phone className="h-3 w-3" />
                         {customer.phone}
                       </div>
                     )}
                     {!customer.email && !customer.phone && '-'}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="text-center text-muted-foreground">
                     {formatDate(customer.createdAt)}
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
+                  <TableCell className="text-center">
+                    <div className="flex items-center justify-center gap-1">
                       <Button
                         variant="ghost"
                         size="sm"

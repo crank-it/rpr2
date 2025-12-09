@@ -1,7 +1,7 @@
 'use client'
 
-import { Plus, Search, Filter, Calendar as CalendarIcon, Target, TrendingUp, Users, DollarSign, Pencil, Trash2 } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { Plus, Search, Filter, Calendar as CalendarIcon, Target, TrendingUp, Users, DollarSign, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { CreateCampaignModal } from '@/components/campaigns/CreateCampaignModal'
 import { formatDate } from '@/lib/utils'
@@ -35,10 +35,26 @@ export default function CampaignsPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
   const [mounted, setMounted] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<string>('')
+  const [audienceFilter, setAudienceFilter] = useState<string>('')
+  const filterRef = useRef<HTMLDivElement>(null)
+  const [currentDate, setCurrentDate] = useState(new Date())
 
   useEffect(() => {
     setMounted(true)
     fetchCampaigns()
+  }, [])
+
+  // Close filter dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+        setShowFilters(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
   const fetchCampaigns = async () => {
@@ -169,10 +185,87 @@ export default function CampaignsPage() {
     return `${days} days`
   }
 
-  const filteredCampaigns = campaigns.filter(campaign =>
-    campaign.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    campaign.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredCampaigns = campaigns.filter(campaign => {
+    const matchesSearch = campaign.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      campaign.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesStatus = !statusFilter || campaign.status.toUpperCase() === statusFilter.toUpperCase()
+    const matchesAudience = !audienceFilter || campaign.audience.toUpperCase() === audienceFilter.toUpperCase()
+    return matchesSearch && matchesStatus && matchesAudience
+  })
+
+  const clearFilters = () => {
+    setStatusFilter('')
+    setAudienceFilter('')
+  }
+
+  const activeFiltersCount = (statusFilter ? 1 : 0) + (audienceFilter ? 1 : 0)
+
+  // Calendar helper functions
+  const getDaysInMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
+  }
+
+  const getFirstDayOfMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth(), 1).getDay()
+  }
+
+  const prevMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))
+  }
+
+  const nextMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))
+  }
+
+  const goToToday = () => {
+    setCurrentDate(new Date())
+  }
+
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+  const getCampaignsForDate = (day: number) => {
+    const dateToCheck = new Date(currentDate.getFullYear(), currentDate.getMonth(), day)
+    dateToCheck.setHours(0, 0, 0, 0)
+
+    return filteredCampaigns.filter(campaign => {
+      if (!campaign.launchDate) return false
+
+      const launchDate = new Date(campaign.launchDate)
+      launchDate.setHours(0, 0, 0, 0)
+
+      const endDate = campaign.endDate ? new Date(campaign.endDate) : launchDate
+      endDate.setHours(0, 0, 0, 0)
+
+      return dateToCheck >= launchDate && dateToCheck <= endDate
+    })
+  }
+
+  const isToday = (day: number) => {
+    const today = new Date()
+    return (
+      day === today.getDate() &&
+      currentDate.getMonth() === today.getMonth() &&
+      currentDate.getFullYear() === today.getFullYear()
+    )
+  }
+
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      'DRAFT': 'bg-gray-200 text-gray-700',
+      'draft': 'bg-gray-200 text-gray-700',
+      'SCHEDULED': 'bg-amber-100 text-amber-700',
+      'scheduled': 'bg-amber-100 text-amber-700',
+      'ACTIVE': 'bg-green-100 text-green-700',
+      'active': 'bg-green-100 text-green-700',
+      'COMPLETED': 'bg-blue-100 text-blue-700',
+      'completed': 'bg-blue-100 text-blue-700',
+      'PAUSED': 'bg-orange-100 text-orange-700',
+      'paused': 'bg-orange-100 text-orange-700',
+      'planning': 'bg-purple-100 text-purple-700'
+    }
+    return colors[status] || 'bg-gray-100 text-gray-600'
+  }
 
   return (
     <div className="space-y-6">
@@ -226,10 +319,61 @@ export default function CampaignsPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button variant="outline">
-            <Filter className="mr-2 h-4 w-4" />
-            Filters
-          </Button>
+          <div className="relative" ref={filterRef}>
+            <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
+              <Filter className="mr-2 h-4 w-4" />
+              Filters
+              {activeFiltersCount > 0 && (
+                <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </Button>
+            {showFilters && (
+              <div className="absolute right-0 top-full mt-2 z-50 w-64 rounded-lg border bg-white shadow-lg p-4">
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Status</label>
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="">All Statuses</option>
+                      <option value="DRAFT">Draft</option>
+                      <option value="SCHEDULED">Scheduled</option>
+                      <option value="ACTIVE">Active</option>
+                      <option value="PAUSED">Paused</option>
+                      <option value="COMPLETED">Completed</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Audience</label>
+                    <select
+                      value={audienceFilter}
+                      onChange={(e) => setAudienceFilter(e.target.value)}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="">All Audiences</option>
+                      <option value="B2B">B2B</option>
+                      <option value="B2C">B2C</option>
+                      <option value="BOTH">Both</option>
+                    </select>
+                  </div>
+                  {activeFiltersCount > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full"
+                      onClick={clearFilters}
+                    >
+                      Clear Filters
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </Card>
 
@@ -353,15 +497,121 @@ export default function CampaignsPage() {
         </div>
       ) : (
         <Card>
-          <CardContent className="p-12">
-            <div className="text-center">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gray-100 mx-auto mb-4">
-                <CalendarIcon className="h-10 w-10 text-gray-400" />
+          <CardContent className="p-6">
+            {/* Calendar Header */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <h2 className="text-xl font-semibold">
+                  {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+                </h2>
+                <Button variant="outline" size="sm" onClick={goToToday}>
+                  Today
+                </Button>
               </div>
-              <h3 className="text-lg font-semibold mb-2">Calendar view coming soon</h3>
-              <p className="text-sm text-muted-foreground">
-                Visual timeline of all campaigns with phase coordination
-              </p>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={prevMonth}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="sm" onClick={nextMonth}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Calendar Grid */}
+            <div className="border rounded-lg overflow-hidden">
+              {/* Day Headers */}
+              <div className="grid grid-cols-7 bg-gray-50 border-b">
+                {dayNames.map((day) => (
+                  <div key={day} className="py-3 text-center text-sm font-medium text-gray-600">
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              {/* Calendar Days */}
+              <div className="grid grid-cols-7">
+                {/* Empty cells for days before the first of the month */}
+                {Array.from({ length: getFirstDayOfMonth(currentDate) }).map((_, index) => (
+                  <div key={`empty-${index}`} className="min-h-[120px] p-2 border-b border-r bg-gray-50/50" />
+                ))}
+
+                {/* Days of the month */}
+                {Array.from({ length: getDaysInMonth(currentDate) }).map((_, index) => {
+                  const day = index + 1
+                  const campaignsForDay = getCampaignsForDate(day)
+                  const todayClass = isToday(day) ? 'bg-blue-50' : ''
+
+                  return (
+                    <div
+                      key={day}
+                      className={`min-h-[120px] p-2 border-b border-r ${todayClass}`}
+                    >
+                      <div className={`text-sm font-medium mb-1 ${isToday(day) ? 'text-blue-600' : 'text-gray-700'}`}>
+                        {isToday(day) ? (
+                          <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-600 text-white">
+                            {day}
+                          </span>
+                        ) : (
+                          day
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        {campaignsForDay.slice(0, 3).map((campaign) => (
+                          <div
+                            key={campaign.id}
+                            onClick={() => router.push(`/campaigns/${campaign.id}`)}
+                            className={`text-xs px-2 py-1 rounded cursor-pointer truncate hover:opacity-80 transition-opacity ${getStatusColor(campaign.status)}`}
+                            title={campaign.name}
+                          >
+                            {campaign.name}
+                          </div>
+                        ))}
+                        {campaignsForDay.length > 3 && (
+                          <div className="text-xs text-gray-500 px-2">
+                            +{campaignsForDay.length - 3} more
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+
+                {/* Empty cells for remaining grid spaces */}
+                {Array.from({
+                  length: (7 - ((getFirstDayOfMonth(currentDate) + getDaysInMonth(currentDate)) % 7)) % 7
+                }).map((_, index) => (
+                  <div key={`empty-end-${index}`} className="min-h-[120px] p-2 border-b border-r bg-gray-50/50" />
+                ))}
+              </div>
+            </div>
+
+            {/* Legend */}
+            <div className="mt-4 flex flex-wrap gap-4 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-gray-200"></div>
+                <span>Draft</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-purple-100"></div>
+                <span>Planning</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-amber-100"></div>
+                <span>Scheduled</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-green-100"></div>
+                <span>Active</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-blue-100"></div>
+                <span>Completed</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-orange-100"></div>
+                <span>Paused</span>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -381,6 +631,40 @@ export default function CampaignsPage() {
           initialData={editingCampaign}
           isEditing={true}
         />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deleteCampaign && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setDeleteCampaign(null)}
+          />
+          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="px-8 py-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Delete Campaign</h2>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete <span className="font-medium">&quot;{deleteCampaign.name}&quot;</span>? This action cannot be undone.
+              </p>
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setDeleteCampaign(null)}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteConfirm}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

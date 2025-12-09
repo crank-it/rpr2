@@ -200,66 +200,69 @@ export function UploadAssetModal({ isOpen, onClose, onAssetUploaded, initialData
     <Modal isOpen={isOpen} onClose={onClose} title={isEditing ? "Edit Asset" : "Upload Asset"} size="lg">
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* File Upload Area */}
-        {!isEditing && (
-          <div
-            className={`relative p-6 border-2 border-dashed rounded-lg text-center transition-colors ${
-              selectedFile ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-gray-400'
-            }`}
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              onChange={handleFileSelect}
-              accept="image/*,video/*,application/pdf,.doc,.docx,.ppt,.pptx"
-            />
+        <div
+          className={`relative p-6 border-2 border-dashed rounded-lg text-center transition-colors ${
+            selectedFile ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-gray-400'
+          }`}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            onChange={handleFileSelect}
+            accept="image/*,video/*,application/pdf,.doc,.docx,.ppt,.pptx"
+          />
 
-            {selectedFile ? (
-              <div className="flex items-center justify-center gap-4">
-                {previewUrl && formData.type === 'IMAGE' ? (
-                  <img src={previewUrl} alt="Preview" className="h-16 w-16 object-cover rounded" />
-                ) : (
-                  getFileIcon(formData.type)
-                )}
-                <div className="text-left">
-                  <p className="font-medium text-sm truncate max-w-[200px]">{selectedFile.name}</p>
-                  <p className="text-xs text-gray-500">{formatFileSize(selectedFile.size)}</p>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="ml-2"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    removeFile()
-                  }}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+          {selectedFile ? (
+            <div className="flex items-center justify-center gap-4">
+              {previewUrl && formData.type === 'IMAGE' ? (
+                <img src={previewUrl} alt="Preview" className="h-16 w-16 object-cover rounded" />
+              ) : (
+                getFileIcon(formData.type)
+              )}
+              <div className="text-left">
+                <p className="font-medium text-sm truncate max-w-[200px]">{selectedFile.name}</p>
+                <p className="text-xs text-gray-500">{formatFileSize(selectedFile.size)}</p>
               </div>
-            ) : (
-              <>
-                <Upload className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-                <p className="text-sm font-medium text-gray-700 mb-1">
-                  Drag and drop your file here
-                </p>
-                <p className="text-xs text-gray-500">
-                  or click to browse (Images, Videos, PDFs, Documents)
-                </p>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Preview for editing */}
-        {isEditing && previewUrl && formData.type === 'IMAGE' && (
-          <div className="relative">
-            <img src={previewUrl} alt="Current" className="w-full h-40 object-contain rounded-lg bg-gray-100" />
-          </div>
-        )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="ml-2"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  removeFile()
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : isEditing && previewUrl ? (
+            <div className="flex flex-col items-center gap-3">
+              {formData.type === 'IMAGE' ? (
+                <img src={previewUrl} alt="Current" className="h-24 w-auto object-contain rounded" />
+              ) : (
+                getFileIcon(formData.type)
+              )}
+              <p className="text-sm text-gray-600">Current file</p>
+              <p className="text-xs text-gray-500">
+                Click or drag to replace with a new file
+              </p>
+            </div>
+          ) : (
+            <>
+              <Upload className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+              <p className="text-sm font-medium text-gray-700 mb-1">
+                Drag and drop your file here
+              </p>
+              <p className="text-xs text-gray-500">
+                or click to browse (Images, Videos, PDFs, Documents)
+              </p>
+            </>
+          )}
+        </div>
 
         {uploadProgress && (
           <div className={`text-sm p-3 rounded ${

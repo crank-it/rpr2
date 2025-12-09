@@ -163,9 +163,9 @@ export default function CampaignDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {campaign.goals.map((goal) => (
+              {campaign.goals.map((goal, index) => (
                 <Badge
-                  key={goal}
+                  key={`${goal}-${index}`}
                   variant="secondary"
                   className="px-4 py-2 text-sm"
                 >

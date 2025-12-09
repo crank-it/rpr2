@@ -169,15 +169,25 @@ model Campaign {
   audience      CampaignAudience @default(BOTH)
   status        String           @default("draft")
 
-  launchDate    DateTime
-  endDate       DateTime?
+  launchDate              DateTime         @map("launch_date")
+  endDate                 DateTime?        @map("end_date")
+  distributorPreviewDate  DateTime?        @map("distributor_preview_date")
+  salonLaunchDate         DateTime?        @map("salon_launch_date")
+  consumerLaunchDate      DateTime?        @map("consumer_launch_date")
 
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  budget        Float?
+  actualSpend   Float?           @map("actual_spend")
+  goals         String[]         @default([])
+  channels      String[]         @default([])
+  progress      Json?
+
+  createdAt     DateTime         @default(now())  @map("created_at")
+  updatedAt     DateTime         @updatedAt       @map("updated_at")
 
   assets        Asset[]
   activities    Activity[]
 
+  @@map("campaigns")
   @@index([launchDate])
   @@index([status])
 }
@@ -222,15 +232,15 @@ model Comment {
   content       String       @db.Text
 
   // Polymorphic entity relationship
-  entityType    EntityType
-  entityId      String
+  entityType    EntityType   @map("entity_type")
+  entityId      String       @map("entity_id")
 
   // Author information
   author        String       @default("Anonymous")
-  authorEmail   String?
+  authorEmail   String?      @map("author_email")
 
   // Threading support
-  parentId      String?
+  parentId      String?      @map("parent_id")
   parent        Comment?     @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
   replies       Comment[]    @relation("CommentReplies")
 
@@ -238,15 +248,16 @@ model Comment {
   reactions     Json?        // Store reactions as JSON: [{ emoji: "👍", count: 3, users: ["user1", "user2"] }]
 
   // Metadata
-  editedAt      DateTime?
-  deletedAt     DateTime?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  editedAt      DateTime?    @map("edited_at")
+  deletedAt     DateTime?    @map("deleted_at")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt      @map("updated_at")
 
   // Relations
   attachments   CommentAttachment[]
   notifications Notification[]
 
+  @@map("comments")
   @@index([entityType, entityId])
   @@index([parentId])
   @@index([createdAt])
@@ -257,15 +268,16 @@ model CommentAttachment {
   id            String       @id @default(cuid())
   filename      String
   url           String
-  mimeType      String
-  fileSize      Int
+  mimeType      String       @map("mime_type")
+  fileSize      Int          @map("file_size")
 
-  commentId     String
+  commentId     String       @map("comment_id")
   comment       Comment      @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
-  uploadedBy    String       @default("Anonymous")
-  createdAt     DateTime     @default(now())
+  uploadedBy    String       @default("Anonymous") @map("uploaded_by")
+  createdAt     DateTime     @default(now())       @map("created_at")
 
+  @@map("comment_attachments")
   @@index([commentId])
 }
 
@@ -276,20 +288,21 @@ model Notification {
   message       String           @db.Text
 
   // Target user
-  userId        String
+  userId        String           @map("user_id")
   read          Boolean          @default(false)
-  readAt        DateTime?
+  readAt        DateTime?        @map("read_at")
 
   // Link to related comment
-  commentId     String?
+  commentId     String?          @map("comment_id")
   comment       Comment?         @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
   // Link context
-  entityType    EntityType?
-  entityId      String?
+  entityType    EntityType?      @map("entity_type")
+  entityId      String?          @map("entity_id")
 
-  createdAt     DateTime         @default(now())
+  createdAt     DateTime         @default(now()) @map("created_at")
 
+  @@map("notifications")
   @@index([userId, read])
   @@index([createdAt])
   @@index([commentId])

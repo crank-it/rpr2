@@ -1,7 +1,7 @@
 'use client'
 
 import { Plus, Search, Filter, FolderOpen, Calendar, Pencil, Trash2 } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { CreateProjectModal } from '@/components/projects/CreateProjectModal'
 import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
@@ -65,9 +65,13 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<string>('')
+  const [priorityFilter, setPriorityFilter] = useState<string>('')
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [deleteProject, setDeleteProject] = useState<Project | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const filterRef = useRef<HTMLDivElement>(null)
 
   const fetchData = async () => {
     setLoading(true)
@@ -98,6 +102,17 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     fetchData()
+  }, [])
+
+  // Close filter dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+        setShowFilters(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
   const handleProjectCreated = async (newProject: any) => {
@@ -189,10 +204,20 @@ export default function ProjectsPage() {
     return customer?.name || null
   }
 
-  const filteredProjects = projects.filter(project =>
-    project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    project.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredProjects = projects.filter(project => {
+    const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      project.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesStatus = !statusFilter || project.status === statusFilter
+    const matchesPriority = !priorityFilter || project.priority === priorityFilter
+    return matchesSearch && matchesStatus && matchesPriority
+  })
+
+  const clearFilters = () => {
+    setStatusFilter('')
+    setPriorityFilter('')
+  }
+
+  const activeFiltersCount = (statusFilter ? 1 : 0) + (priorityFilter ? 1 : 0)
 
   return (
     <div className="space-y-6">
@@ -222,10 +247,61 @@ export default function ProjectsPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button variant="outline">
-            <Filter className="mr-2 h-4 w-4" />
-            Filters
-          </Button>
+          <div className="relative" ref={filterRef}>
+            <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
+              <Filter className="mr-2 h-4 w-4" />
+              Filters
+              {activeFiltersCount > 0 && (
+                <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </Button>
+            {showFilters && (
+              <div className="absolute right-0 top-full mt-2 z-50 w-64 rounded-lg border bg-white shadow-lg p-4">
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Status</label>
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="">All Statuses</option>
+                      <option value="DRAFT">Draft</option>
+                      <option value="IN_PROGRESS">In Progress</option>
+                      <option value="REVIEW">Review</option>
+                      <option value="APPROVED">Approved</option>
+                      <option value="COMPLETED">Completed</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Priority</label>
+                    <select
+                      value={priorityFilter}
+                      onChange={(e) => setPriorityFilter(e.target.value)}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="">All Priorities</option>
+                      <option value="LOW">Low</option>
+                      <option value="MEDIUM">Medium</option>
+                      <option value="HIGH">High</option>
+                    </select>
+                  </div>
+                  {activeFiltersCount > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full"
+                      onClick={clearFilters}
+                    >
+                      Clear Filters
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </Card>
 

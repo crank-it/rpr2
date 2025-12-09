@@ -10,7 +10,7 @@ interface Campaign {
   id: string
   name: string
   status: string
-  progress?: number
+  progress: number
   budget: number | null
 }
 

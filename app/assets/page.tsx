@@ -1,7 +1,7 @@
 'use client'
 
 import { Upload, Search, Filter, Image as ImageIcon, FileText, Video, File, Pencil, Trash2 } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { UploadAssetModal } from '@/components/assets/UploadAssetModal'
 import { formatDate } from '@/lib/utils'
@@ -33,6 +33,9 @@ export default function AssetsPage() {
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null)
   const [deleteAsset, setDeleteAsset] = useState<Asset | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
+  const [typeFilter, setTypeFilter] = useState<string>('')
+  const filterRef = useRef<HTMLDivElement>(null)
 
   const fetchAssets = async () => {
     setLoading(true)
@@ -51,6 +54,17 @@ export default function AssetsPage() {
 
   useEffect(() => {
     fetchAssets()
+  }, [])
+
+  // Close filter dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+        setShowFilters(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
   const handleAssetUploaded = async (newAsset: any) => {
@@ -147,11 +161,19 @@ export default function AssetsPage() {
     }
   }
 
-  const filteredAssets = assets.filter(asset =>
-    asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    asset.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    asset.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-  )
+  const filteredAssets = assets.filter(asset => {
+    const matchesSearch = asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      asset.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      asset.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+    const matchesType = !typeFilter || asset.type === typeFilter
+    return matchesSearch && matchesType
+  })
+
+  const clearFilters = () => {
+    setTypeFilter('')
+  }
+
+  const activeFiltersCount = typeFilter ? 1 : 0
 
   return (
     <div className="space-y-6">
@@ -181,10 +203,47 @@ export default function AssetsPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button variant="outline">
-            <Filter className="mr-2 h-4 w-4" />
-            Filters
-          </Button>
+          <div className="relative" ref={filterRef}>
+            <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
+              <Filter className="mr-2 h-4 w-4" />
+              Filters
+              {activeFiltersCount > 0 && (
+                <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </Button>
+            {showFilters && (
+              <div className="absolute right-0 top-full mt-2 z-50 w-64 rounded-lg border bg-white shadow-lg p-4">
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Type</label>
+                    <select
+                      value={typeFilter}
+                      onChange={(e) => setTypeFilter(e.target.value)}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="">All Types</option>
+                      <option value="IMAGE">Image</option>
+                      <option value="VIDEO">Video</option>
+                      <option value="DOCUMENT">Document</option>
+                      <option value="PDF">PDF</option>
+                    </select>
+                  </div>
+                  {activeFiltersCount > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full"
+                      onClick={clearFilters}
+                    >
+                      Clear Filters
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </Card>
 

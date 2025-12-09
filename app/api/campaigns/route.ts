@@ -45,6 +45,8 @@ export async function GET(request: Request) {
       endDate: campaign.end_date,
       budget: campaign.budget,
       actualSpend: campaign.actual_spend,
+      goals: campaign.goals || [],
+      progress: typeof campaign.progress === 'number' ? campaign.progress : 0,
       createdAt: campaign.created_at,
       updatedAt: campaign.updated_at,
       _count: { assets: 0, activities: 0 }
@@ -74,7 +76,9 @@ export async function POST(request: Request) {
         launch_date: body.launchDate || null,
         end_date: body.endDate || null,
         budget: body.budget || null,
-        actual_spend: body.actualSpend || null
+        actual_spend: body.actualSpend || null,
+        goals: body.goals || [],
+        progress: body.progress !== undefined ? body.progress : 0
       })
       .select()
       .single()
