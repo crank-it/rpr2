@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Send, MessageCircle, Loader2 } from 'lucide-react'
+import { useUser } from '@clerk/nextjs'
 
 interface Comment {
   id: string
@@ -35,10 +36,14 @@ function formatTimestamp(timestamp: string): string {
 }
 
 export function CommentThread({ entityType, entityId }: CommentThreadProps) {
+  const { user } = useUser()
   const [comments, setComments] = useState<Comment[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [newComment, setNewComment] = useState('')
+
+  // Get current user's display name
+  const currentUserName = user?.fullName || user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || 'Unknown'
 
   useEffect(() => {
     async function fetchComments() {
@@ -85,7 +90,7 @@ export function CommentThread({ entityType, entityId }: CommentThreadProps) {
           entityType,
           entityId,
           content: newComment,
-          author: 'You'
+          author: currentUserName
         })
       })
 
@@ -147,6 +152,7 @@ export function CommentThread({ entityType, entityId }: CommentThreadProps) {
                 entityType={entityType}
                 entityId={entityId}
                 onReplyAdded={handleAddReply}
+                currentUserName={currentUserName}
               />
             ))}
           </div>
@@ -196,9 +202,10 @@ interface CommentItemProps {
   entityId: string
   onReplyAdded: (parentId: string, reply: Comment) => void
   isReply?: boolean
+  currentUserName: string
 }
 
-function CommentItem({ comment, entityType, entityId, onReplyAdded, isReply = false }: CommentItemProps) {
+function CommentItem({ comment, entityType, entityId, onReplyAdded, isReply = false, currentUserName }: CommentItemProps) {
   const [showReply, setShowReply] = useState(false)
   const [replyContent, setReplyContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -215,7 +222,7 @@ function CommentItem({ comment, entityType, entityId, onReplyAdded, isReply = fa
           entityType,
           entityId,
           content: replyContent,
-          author: 'You',
+          author: currentUserName,
           parentId: comment.id
         })
       })
@@ -275,6 +282,7 @@ function CommentItem({ comment, entityType, entityId, onReplyAdded, isReply = fa
                   entityId={entityId}
                   onReplyAdded={onReplyAdded}
                   isReply={true}
+                  currentUserName={currentUserName}
                 />
               ))}
             </div>
