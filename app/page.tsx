@@ -1,6 +1,6 @@
 'use client'
 
-import { FolderOpen, Users, Image, Calendar, TrendingUp, ArrowRight, Plus } from 'lucide-react'
+import { FolderOpen, Users, Image, Calendar, TrendingUp, ArrowRight, Plus, X, Loader2 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -29,9 +29,22 @@ interface DashboardStats {
   }[]
 }
 
+interface Activity {
+  id: string
+  type: string
+  description: string
+  entityType: string
+  entityId: string | null
+  performedBy: string
+  createdAt: string
+}
+
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showActivityModal, setShowActivityModal] = useState(false)
+  const [allActivities, setAllActivities] = useState<Activity[]>([])
+  const [activitiesLoading, setActivitiesLoading] = useState(false)
 
   useEffect(() => {
     fetchDashboardData()
@@ -48,6 +61,53 @@ export default function DashboardPage() {
       console.error('Failed to fetch dashboard data:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchAllActivities = async () => {
+    setActivitiesLoading(true)
+    try {
+      const response = await fetch('/api/activities?limit=100')
+      if (response.ok) {
+        const result = await response.json()
+        setAllActivities(result.activities)
+      }
+    } catch (error) {
+      console.error('Failed to fetch activities:', error)
+    } finally {
+      setActivitiesLoading(false)
+    }
+  }
+
+  const handleViewAllActivity = () => {
+    setShowActivityModal(true)
+    fetchAllActivities()
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / (1000 * 60))
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+    if (diffDays === 1) return '1 day ago'
+    if (diffDays < 7) return `${diffDays} days ago`
+    return date.toLocaleDateString()
+  }
+
+  const getEntityLink = (activity: Activity) => {
+    if (!activity.entityId) return null
+    switch (activity.entityType) {
+      case 'Project': return `/projects/${activity.entityId}`
+      case 'Campaign': return `/campaigns/${activity.entityId}`
+      case 'Customer': return `/customers/${activity.entityId}`
+      case 'Asset': return `/assets/${activity.entityId}`
+      default: return null
     }
   }
 
@@ -166,7 +226,7 @@ export default function DashboardPage() {
             {data?.recentActivity && data.recentActivity.length > 0 && (
               <>
                 <Separator className="my-4" />
-                <Button variant="ghost" className="w-full">
+                <Button variant="ghost" className="w-full" onClick={handleViewAllActivity}>
                   View all activity
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -255,6 +315,101 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Activity Modal */}
+      {showActivityModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowActivityModal(false)}
+          />
+          <div className="relative w-full max-w-2xl max-h-[80vh] bg-white rounded-2xl shadow-2xl animate-in fade-in zoom-in duration-200 flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">All Activity</h2>
+                <p className="text-sm text-muted-foreground">Recent actions across your workspace</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowActivityModal(false)}
+                className="h-8 w-8 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              {activitiesLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : allActivities.length === 0 ? (
+                <div className="flex flex-col items-center py-12 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 mb-3">
+                    <FolderOpen className="h-6 w-6 text-gray-400" />
+                  </div>
+                  <p className="text-sm font-medium text-gray-900">No activity yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">Activity will appear here as you work</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {allActivities.map((activity) => {
+                    const link = getEntityLink(activity)
+                    return (
+                      <div key={activity.id} className="flex items-start gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100 flex-shrink-0">
+                          {activity.entityType === 'Project' && <FolderOpen className="h-4 w-4" />}
+                          {activity.entityType === 'Asset' && <Image className="h-4 w-4" />}
+                          {activity.entityType === 'Campaign' && <Calendar className="h-4 w-4" />}
+                          {activity.entityType === 'Customer' && <Users className="h-4 w-4" />}
+                          {!['Project', 'Asset', 'Campaign', 'Customer'].includes(activity.entityType) && <FolderOpen className="h-4 w-4" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900">{activity.description}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="secondary" className="text-xs">
+                              {activity.entityType}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              by {activity.performedBy}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {formatDate(activity.createdAt)}
+                            </span>
+                          </div>
+                        </div>
+                        {link && (
+                          <Link
+                            href={link}
+                            onClick={() => setShowActivityModal(false)}
+                            className="text-xs text-teal-600 hover:text-teal-700 font-medium flex-shrink-0"
+                          >
+                            View
+                          </Link>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setShowActivityModal(false)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
