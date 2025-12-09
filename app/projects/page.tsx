@@ -52,6 +52,7 @@ const getStatusVariant = (status: string) => {
 
 const getPriorityVariant = (priority: string) => {
   const variants: Record<string, 'destructive' | 'warning' | 'secondary'> = {
+    'URGENT': 'destructive',
     'HIGH': 'destructive',
     'MEDIUM': 'warning',
     'LOW': 'secondary'
@@ -286,6 +287,7 @@ export default function ProjectsPage() {
                       <option value="LOW">Low</option>
                       <option value="MEDIUM">Medium</option>
                       <option value="HIGH">High</option>
+                      <option value="URGENT">Urgent</option>
                     </select>
                   </div>
                   {activeFiltersCount > 0 && (

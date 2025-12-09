@@ -26,7 +26,6 @@ export function UploadAssetModal({ isOpen, onClose, onAssetUploaded, initialData
   const [formData, setFormData] = useState({
     name: initialData?.name || '',
     type: initialData?.type || 'IMAGE',
-    url: initialData?.url || '',
     description: initialData?.description || '',
     tags: initialData?.tags?.join(', ') || '',
     collection: initialData?.collection || ''
@@ -133,7 +132,7 @@ export function UploadAssetModal({ isOpen, onClose, onAssetUploaded, initialData
     setLoading(true)
 
     try {
-      let fileUrl = formData.url
+      let fileUrl = ''
 
       // Upload file if selected
       if (selectedFile) {
@@ -178,7 +177,6 @@ export function UploadAssetModal({ isOpen, onClose, onAssetUploaded, initialData
       setFormData({
         name: '',
         type: 'IMAGE',
-        url: '',
         description: '',
         tags: '',
         collection: ''
@@ -194,7 +192,7 @@ export function UploadAssetModal({ isOpen, onClose, onAssetUploaded, initialData
     }
   }
 
-  const canSubmit = formData.name && formData.description && (selectedFile || formData.url || isEditing)
+  const canSubmit = formData.name && formData.description && (selectedFile || isEditing)
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEditing ? "Edit Asset" : "Upload Asset"} size="lg">
@@ -296,17 +294,6 @@ export function UploadAssetModal({ isOpen, onClose, onAssetUploaded, initialData
             ]}
           />
         </div>
-
-        {/* Manual URL input (optional, for external URLs) */}
-        {!selectedFile && (
-          <Input
-            label="Or enter URL manually"
-            type="url"
-            placeholder="https://example.com/image.jpg"
-            value={formData.url}
-            onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-          />
-        )}
 
         <div className="grid grid-cols-2 gap-4">
           <Input

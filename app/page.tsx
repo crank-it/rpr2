@@ -245,7 +245,7 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
+            <CardTitle className="text-sm font-medium">Completed Projects</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-semibold">{data?.projectStatus.completed ?? 0}</div>

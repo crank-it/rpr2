@@ -120,7 +120,6 @@ export function CreateProjectModal({ isOpen, onClose, onProjectCreated, customer
               { value: '', label: 'Select customer...' },
               ...customers.map(c => ({ value: c.id, label: c.name }))
             ]}
-            required
           />
 
           <Input
@@ -136,7 +135,7 @@ export function CreateProjectModal({ isOpen, onClose, onProjectCreated, customer
           <Button type="button" variant="outline" onClick={onClose} className="px-6">
             Cancel
           </Button>
-          <Button type="submit" disabled={loading || !formData.title || !formData.description || !formData.customerId || !formData.dueDate} className="px-6">
+          <Button type="submit" disabled={loading || !formData.title || !formData.description || !formData.dueDate} className="px-6">
             {loading ? (isEditing ? 'Saving...' : 'Creating...') : (isEditing ? 'Save Changes' : 'Create Project')}
           </Button>
         </div>

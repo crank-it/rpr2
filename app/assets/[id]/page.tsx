@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Download, Eye, Calendar, Tag, FolderOpen, Pencil, Image as ImageIcon, FileText, Video, File } from 'lucide-react'
+import { ArrowLeft, Download, Calendar, Tag, FolderOpen, Pencil, Image as ImageIcon, FileText, Video, File, Loader2 } from 'lucide-react'
 import { CommentThread } from '@/components/comments/CommentThread'
 import { UploadAssetModal } from '@/components/assets/UploadAssetModal'
 import { formatDate } from '@/lib/utils'
@@ -23,8 +23,6 @@ interface Asset {
   collection?: string | null
   projectId?: string | null
   campaignId?: string | null
-  downloads: number
-  views: number
   uploadedBy: string
   createdAt: string
   updatedAt: string
@@ -37,6 +35,7 @@ export default function AssetDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
 
   const fetchAsset = async () => {
     setLoading(true)
@@ -76,7 +75,8 @@ export default function AssetDetailPage() {
           type: updatedAsset.type,
           url: updatedAsset.url,
           description: updatedAsset.description,
-          tags: updatedAsset.tags
+          tags: updatedAsset.tags,
+          collection: updatedAsset.collection
         })
       })
       if (!response.ok) {
@@ -101,6 +101,46 @@ export default function AssetDetailPage() {
         return <FileText className="h-6 w-6" />
       default:
         return <File className="h-6 w-6" />
+    }
+  }
+
+  const handleDownload = async () => {
+    if (!asset?.url) return
+
+    setIsDownloading(true)
+    try {
+      const response = await fetch(asset.url)
+      const blob = await response.blob()
+
+      // Get file extension from URL or default based on type
+      const urlParts = asset.url.split('.')
+      const extension = urlParts[urlParts.length - 1].split('?')[0] || getDefaultExtension(asset.type)
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${asset.name}.${extension}`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Download failed:', error)
+      // Fallback: open in new tab
+      window.open(asset.url, '_blank')
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
+  const getDefaultExtension = (type: string) => {
+    switch (type) {
+      case 'IMAGE': return 'png'
+      case 'VIDEO': return 'mp4'
+      case 'DOCUMENT': return 'pdf'
+      case 'PDF': return 'pdf'
+      default: return 'file'
     }
   }
 
@@ -180,11 +220,13 @@ export default function AssetDetailPage() {
               Edit
             </Button>
             {asset.url && (
-              <Button asChild>
-                <a href={asset.url} download target="_blank" rel="noopener noreferrer">
+              <Button onClick={handleDownload} disabled={isDownloading}>
+                {isDownloading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
                   <Download className="mr-2 h-4 w-4" />
-                  Download
-                </a>
+                )}
+                {isDownloading ? 'Downloading...' : 'Download'}
               </Button>
             )}
           </div>
@@ -275,34 +317,6 @@ export default function AssetDetailPage() {
           </CardContent>
         </Card>
       )}
-
-      {/* Usage Stats */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Eye className="h-4 w-4 text-gray-400" />
-              Views
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold">{asset.views || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">Total views</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Download className="h-4 w-4 text-gray-400" />
-              Downloads
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold">{asset.downloads || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">Total downloads</p>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Communication */}
       <div>

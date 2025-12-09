@@ -77,7 +77,8 @@ export default function AssetsPage() {
           type: newAsset.type || 'IMAGE',
           url: newAsset.url || '',
           description: newAsset.description || null,
-          tags: newAsset.tags || []
+          tags: newAsset.tags || [],
+          collection: newAsset.collection || null
         })
       })
       if (!response.ok) {
@@ -103,7 +104,8 @@ export default function AssetsPage() {
           type: updatedAsset.type,
           url: updatedAsset.url,
           description: updatedAsset.description,
-          tags: updatedAsset.tags
+          tags: updatedAsset.tags,
+          collection: updatedAsset.collection
         })
       })
       if (!response.ok) {
