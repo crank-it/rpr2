@@ -36,12 +36,12 @@ export function CreateProjectModal({ isOpen, onClose, onProjectCreated, customer
 
       const projectData = {
         title: formData.title,
-        description: formData.description || null,
+        description: formData.description,
         status: formData.status,
         priority: formData.priority,
-        dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
-        customerId: formData.customerId || null,
-        customer: selectedCustomer || null
+        dueDate: new Date(formData.dueDate).toISOString(),
+        customerId: formData.customerId,
+        customer: selectedCustomer
       }
 
       // Call the callback to add the project to the parent component's state
@@ -81,6 +81,7 @@ export function CreateProjectModal({ isOpen, onClose, onProjectCreated, customer
           placeholder="Describe the project objectives and deliverables..."
           value={formData.description}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          required
         />
 
         <div className="grid grid-cols-2 gap-4">
@@ -119,6 +120,7 @@ export function CreateProjectModal({ isOpen, onClose, onProjectCreated, customer
               { value: '', label: 'Select customer...' },
               ...customers.map(c => ({ value: c.id, label: c.name }))
             ]}
+            required
           />
 
           <Input
@@ -126,6 +128,7 @@ export function CreateProjectModal({ isOpen, onClose, onProjectCreated, customer
             type="date"
             value={formData.dueDate}
             onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+            required
           />
         </div>
 
@@ -133,7 +136,7 @@ export function CreateProjectModal({ isOpen, onClose, onProjectCreated, customer
           <Button type="button" variant="outline" onClick={onClose} className="px-6">
             Cancel
           </Button>
-          <Button type="submit" disabled={loading || !formData.title} className="px-6">
+          <Button type="submit" disabled={loading || !formData.title || !formData.description || !formData.customerId || !formData.dueDate} className="px-6">
             {loading ? (isEditing ? 'Saving...' : 'Creating...') : (isEditing ? 'Save Changes' : 'Create Project')}
           </Button>
         </div>

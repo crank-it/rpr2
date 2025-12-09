@@ -124,6 +124,7 @@ export function CreateCustomerModal({ isOpen, onClose, onCustomerCreated, initia
               { value: 'CORPORATE', label: 'Corporate' },
               { value: 'VIP', label: 'VIP' }
             ]}
+            required
           />
         </div>
 
@@ -134,6 +135,7 @@ export function CreateCustomerModal({ isOpen, onClose, onCustomerCreated, initia
             placeholder="contact@example.com"
             value={formData.email}
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            required
           />
 
           <Input
@@ -142,6 +144,7 @@ export function CreateCustomerModal({ isOpen, onClose, onCustomerCreated, initia
             placeholder="+61 2 9999 8888"
             value={formData.phone}
             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            required
           />
         </div>
 
@@ -217,7 +220,7 @@ export function CreateCustomerModal({ isOpen, onClose, onCustomerCreated, initia
           <Button type="button" variant="outline" onClick={onClose} className="px-6">
             Cancel
           </Button>
-          <Button type="submit" disabled={loading || !formData.name} className="px-6">
+          <Button type="submit" disabled={loading || !formData.name || !formData.email || !formData.phone || !formData.type} className="px-6">
             {loading ? (isEditing ? 'Saving...' : 'Creating...') : (isEditing ? 'Save Changes' : 'Add Customer')}
           </Button>
         </div>

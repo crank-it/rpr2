@@ -1,6 +1,6 @@
 'use client'
 
-import { Upload, Search, Filter, Image as ImageIcon, FileText, Video, File, Pencil } from 'lucide-react'
+import { Upload, Search, Filter, Image as ImageIcon, FileText, Video, File, Pencil, Trash2 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { UploadAssetModal } from '@/components/assets/UploadAssetModal'
@@ -31,6 +31,8 @@ export default function AssetsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null)
+  const [deleteAsset, setDeleteAsset] = useState<Asset | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const fetchAssets = async () => {
     setLoading(true)
@@ -104,6 +106,31 @@ export default function AssetsPage() {
   const handleEditClick = (asset: Asset, e: React.MouseEvent) => {
     e.stopPropagation()
     setEditingAsset(asset)
+  }
+
+  const handleDeleteClick = (asset: Asset, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setDeleteAsset(asset)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteAsset) return
+
+    setIsDeleting(true)
+    try {
+      const response = await fetch(`/api/assets/${deleteAsset.id}`, {
+        method: 'DELETE'
+      })
+      if (!response.ok) {
+        throw new Error('Failed to delete asset')
+      }
+      setAssets(assets.filter(a => a.id !== deleteAsset.id))
+    } catch (error) {
+      console.error('Error deleting asset:', error)
+    } finally {
+      setIsDeleting(false)
+      setDeleteAsset(null)
+    }
   }
 
   const getAssetIcon = (type: string) => {
@@ -217,6 +244,14 @@ export default function AssetsPage() {
                   >
                     <Pencil className="h-3 w-3" />
                   </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="h-7 bg-white/90 backdrop-blur-sm hover:bg-white text-red-500 hover:text-red-700"
+                    onClick={(e) => handleDeleteClick(asset, e)}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
                   <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm">
                     {asset.type}
                   </Badge>
@@ -275,6 +310,40 @@ export default function AssetsPage() {
           initialData={editingAsset}
           isEditing={true}
         />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deleteAsset && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setDeleteAsset(null)}
+          />
+          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="px-8 py-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Delete Asset</h2>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete <span className="font-medium">&quot;{deleteAsset.name}&quot;</span>? This action cannot be undone.
+              </p>
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setDeleteAsset(null)}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteConfirm}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

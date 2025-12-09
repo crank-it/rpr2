@@ -1,6 +1,6 @@
 'use client'
 
-import { Plus, Users as UsersIcon, Search, Filter, Mail, Phone, FolderOpen, Pencil } from 'lucide-react'
+import { Plus, Users as UsersIcon, Search, Filter, Mail, Phone, FolderOpen, Pencil, Trash2 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { CreateCustomerModal } from '@/components/customers/CreateCustomerModal'
@@ -52,6 +52,8 @@ export default function CustomersPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
+  const [deleteCustomer, setDeleteCustomer] = useState<Customer | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const fetchCustomers = async () => {
     setLoading(true)
@@ -113,6 +115,31 @@ export default function CustomersPage() {
   const handleEditClick = (customer: Customer, e: React.MouseEvent) => {
     e.stopPropagation()
     setEditingCustomer(customer)
+  }
+
+  const handleDeleteClick = (customer: Customer, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setDeleteCustomer(customer)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteCustomer) return
+
+    setIsDeleting(true)
+    try {
+      const response = await fetch(`/api/customers/${deleteCustomer.id}`, {
+        method: 'DELETE'
+      })
+      if (!response.ok) {
+        throw new Error('Failed to delete customer')
+      }
+      setCustomers(customers.filter(c => c.id !== deleteCustomer.id))
+    } catch (error) {
+      console.error('Error deleting customer:', error)
+    } finally {
+      setIsDeleting(false)
+      setDeleteCustomer(null)
+    }
   }
 
   const filteredCustomers = customers.filter(customer =>
@@ -268,13 +295,23 @@ export default function CustomersPage() {
                     {formatDate(customer.createdAt)}
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => handleEditClick(customer, e)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => handleEditClick(customer, e)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => handleDeleteClick(customer, e)}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -297,6 +334,40 @@ export default function CustomersPage() {
           initialData={editingCustomer}
           isEditing={true}
         />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deleteCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setDeleteCustomer(null)}
+          />
+          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="px-8 py-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Delete Customer</h2>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete <span className="font-medium">&quot;{deleteCustomer.name}&quot;</span>? This action cannot be undone.
+              </p>
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setDeleteCustomer(null)}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteConfirm}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

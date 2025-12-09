@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Calendar, Target, DollarSign, Users, FileText, Activity, Pencil, TrendingUp } from 'lucide-react'
+import { ArrowLeft, Calendar, Target, DollarSign, Users, FileText, Activity, Pencil, TrendingUp, Loader2 } from 'lucide-react'
 import { CommentThread } from '@/components/comments/CommentThread'
 import { CreateCampaignModal } from '@/components/campaigns/CreateCampaignModal'
 import { formatDate } from '@/lib/utils'
@@ -11,70 +11,26 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Input } from '@/components/ui/input'
 
-const DEMO_CAMPAIGNS = [
-  {
-    id: '1',
-    name: 'Summer Color Collection Launch 2024',
-    description: 'Launch our premium summer color range across all channels with coordinated B2B and B2C messaging',
-    audience: 'BOTH',
-    status: 'active',
-    launchDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
-    distributorPreviewDate: new Date(Date.now() - 23 * 24 * 60 * 60 * 1000).toISOString(),
-    salonLaunchDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    consumerLaunchDate: new Date(Date.now()).toISOString(),
-    budget: 45000,
-    goals: ['Brand Awareness', 'Sales Growth', 'Salon Education'],
-    _count: { assets: 24, activities: 156 }
-  },
-  {
-    id: '2',
-    name: 'VIP Salon Partner Program',
-    description: 'Exclusive campaign for our top-tier salon partners with premium training and early access',
-    audience: 'B2B',
-    status: 'planning',
-    launchDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-    endDate: null,
-    distributorPreviewDate: null,
-    salonLaunchDate: null,
-    consumerLaunchDate: null,
-    budget: 25000,
-    goals: ['Partner Loyalty', 'Premium Positioning'],
-    _count: { assets: 12, activities: 45 }
-  },
-  {
-    id: '3',
-    name: 'Instagram Influencer Collaboration',
-    description: 'Partner with luxury lifestyle influencers to showcase our premium formulations',
-    audience: 'B2C',
-    status: 'active',
-    launchDate: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-    endDate: new Date(Date.now() + 46 * 24 * 60 * 60 * 1000).toISOString(),
-    distributorPreviewDate: null,
-    salonLaunchDate: null,
-    consumerLaunchDate: null,
-    budget: 35000,
-    goals: ['Social Engagement', 'Brand Awareness', 'UGC Generation'],
-    _count: { assets: 67, activities: 234 }
-  },
-  {
-    id: '4',
-    name: 'Holiday Gift Sets 2024',
-    description: 'Premium holiday collection with exclusive packaging for salon retail and direct consumer sales',
-    audience: 'BOTH',
-    status: 'draft',
-    launchDate: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString(),
-    endDate: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString(),
-    distributorPreviewDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
-    salonLaunchDate: new Date(Date.now() + 106 * 24 * 60 * 60 * 1000).toISOString(),
-    consumerLaunchDate: new Date(Date.now() + 113 * 24 * 60 * 60 * 1000).toISOString(),
-    budget: 75000,
-    goals: ['Holiday Sales', 'Gift Purchases', 'Premium Positioning'],
-    _count: { assets: 8, activities: 12 }
-  }
-]
+interface Campaign {
+  id: string
+  name: string
+  description: string | null
+  audience: 'B2B' | 'B2C' | 'BOTH'
+  status: string
+  launchDate: string
+  endDate: string | null
+  distributorPreviewDate: string | null
+  salonLaunchDate: string | null
+  consumerLaunchDate: string | null
+  budget: number | null
+  actualSpend: number | null
+  goals: string[]
+  channels: string[]
+  progress: number | null
+  assets: unknown[]
+  activities: unknown[]
+}
 
 const getStatusVariant = (status: string) => {
   const variants: Record<string, 'default' | 'secondary' | 'success' | 'warning'> = {
@@ -98,18 +54,68 @@ const getAudienceBadgeVariant = (audience: string) => {
 export default function CampaignDetailPage() {
   const params = useParams()
   const campaignId = params.id as string
-  const campaign = DEMO_CAMPAIGNS.find(c => c.id === campaignId) || DEMO_CAMPAIGNS[0]
+  const [campaign, setCampaign] = useState<Campaign | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [progress, setProgress] = useState(45) // Default progress percentage
 
-  const handleCampaignUpdated = (updatedCampaign: any) => {
-    // Update progress if it's included in the campaign data
-    if (updatedCampaign.progress !== undefined) {
-      setProgress(updatedCampaign.progress)
+  useEffect(() => {
+    async function fetchCampaign() {
+      try {
+        setLoading(true)
+        const response = await fetch(`/api/campaigns/${campaignId}`)
+        if (!response.ok) {
+          throw new Error('Campaign not found')
+        }
+        const data = await response.json()
+        setCampaign(data)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load campaign')
+      } finally {
+        setLoading(false)
+      }
     }
-    console.log('Campaign updated:', updatedCampaign)
+
+    if (campaignId) {
+      fetchCampaign()
+    }
+  }, [campaignId])
+
+  const handleCampaignUpdated = (updatedCampaign: Campaign) => {
+    setCampaign(updatedCampaign)
     setIsEditModalOpen(false)
   }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (error || !campaign) {
+    return (
+      <div className="space-y-6">
+        <Link
+          href="/campaigns"
+          className="inline-flex items-center text-sm text-muted-foreground hover:text-gray-900"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Campaigns
+        </Link>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-center text-muted-foreground">
+              {error || 'Campaign not found'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const progress = campaign.progress ?? 0
 
   return (
     <div className="space-y-6">
@@ -301,7 +307,7 @@ export default function CampaignDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-semibold">{campaign._count.assets}</div>
+            <div className="text-2xl font-semibold">{campaign.assets?.length ?? 0}</div>
             <p className="text-xs text-muted-foreground mt-1">Marketing materials</p>
           </CardContent>
         </Card>
@@ -313,7 +319,7 @@ export default function CampaignDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-semibold">{campaign._count.activities}</div>
+            <div className="text-2xl font-semibold">{campaign.activities?.length ?? 0}</div>
             <p className="text-xs text-muted-foreground mt-1">Campaign actions</p>
           </CardContent>
         </Card>
@@ -328,7 +334,7 @@ export default function CampaignDetailPage() {
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         onCampaignCreated={handleCampaignUpdated}
-        initialData={{ ...campaign, progress }}
+        initialData={campaign}
         isEditing={true}
       />
     </div>

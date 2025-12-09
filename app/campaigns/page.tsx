@@ -1,6 +1,6 @@
 'use client'
 
-import { Plus, Search, Filter, Calendar as CalendarIcon, Target, TrendingUp, Users, DollarSign, Pencil } from 'lucide-react'
+import { Plus, Search, Filter, Calendar as CalendarIcon, Target, TrendingUp, Users, DollarSign, Pencil, Trash2 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { CreateCampaignModal } from '@/components/campaigns/CreateCampaignModal'
@@ -31,6 +31,8 @@ export default function CampaignsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null)
+  const [deleteCampaign, setDeleteCampaign] = useState<Campaign | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
   const [mounted, setMounted] = useState(false)
 
@@ -111,6 +113,31 @@ export default function CampaignsPage() {
   const handleEditClick = (campaign: Campaign, e: React.MouseEvent) => {
     e.stopPropagation()
     setEditingCampaign(campaign)
+  }
+
+  const handleDeleteClick = (campaign: Campaign, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setDeleteCampaign(campaign)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteCampaign) return
+
+    setIsDeleting(true)
+    try {
+      const response = await fetch(`/api/campaigns/${deleteCampaign.id}`, {
+        method: 'DELETE'
+      })
+      if (!response.ok) {
+        throw new Error('Failed to delete campaign')
+      }
+      setCampaigns(campaigns.filter(c => c.id !== deleteCampaign.id))
+    } catch (error) {
+      console.error('Error deleting campaign:', error)
+    } finally {
+      setIsDeleting(false)
+      setDeleteCampaign(null)
+    }
   }
 
   const getStatusVariant = (status: string) => {
@@ -253,14 +280,23 @@ export default function CampaignsPage() {
                       <Badge variant={getAudienceBadgeVariant(campaign.audience)}>
                         {campaign.audience}
                       </Badge>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="ml-auto"
-                        onClick={(e) => handleEditClick(campaign, e)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                      <div className="ml-auto flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => handleEditClick(campaign, e)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => handleDeleteClick(campaign, e)}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
 
                     {campaign.description && (

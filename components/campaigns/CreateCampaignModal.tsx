@@ -60,7 +60,10 @@ export function CreateCampaignModal({ isOpen, onClose, onCampaignCreated, initia
       const goalsArray = formData.goals.split(',').map(g => g.trim()).filter(Boolean)
 
       const campaignData = {
-        ...formData,
+        name: formData.name,
+        description: formData.description,
+        audience: formData.audience,
+        status: formData.status,
         budget: formData.budget ? parseFloat(formData.budget) : null,
         goals: goalsArray,
         progress: formData.progress ? parseInt(formData.progress) : 0,
@@ -71,9 +74,30 @@ export function CreateCampaignModal({ isOpen, onClose, onCampaignCreated, initia
         consumerLaunchDate: formData.consumerLaunchDate ? new Date(formData.consumerLaunchDate).toISOString() : null
       }
 
-      // Call the callback to add the campaign to the parent component's state
+      let result
+      if (isEditing && initialData?.id) {
+        // Update existing campaign via API
+        const response = await fetch(`/api/campaigns/${initialData.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(campaignData)
+        })
+        if (!response.ok) throw new Error('Failed to update campaign')
+        result = await response.json()
+      } else {
+        // Create new campaign via API
+        const response = await fetch('/api/campaigns', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(campaignData)
+        })
+        if (!response.ok) throw new Error('Failed to create campaign')
+        result = await response.json()
+      }
+
+      // Call the callback with the result from API
       if (onCampaignCreated) {
-        onCampaignCreated(campaignData)
+        onCampaignCreated(result)
       }
 
       onClose()
@@ -92,7 +116,7 @@ export function CreateCampaignModal({ isOpen, onClose, onCampaignCreated, initia
         progress: '0'
       })
     } catch (error) {
-      console.error('Failed to create campaign:', error)
+      console.error('Failed to save campaign:', error)
     } finally {
       setLoading(false)
     }

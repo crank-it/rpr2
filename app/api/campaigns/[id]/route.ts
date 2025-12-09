@@ -13,18 +13,31 @@ export async function GET(
   try {
     const { id } = await params
 
-    const { data: campaign, error } = await supabase
-      .from('campaigns')
-      .select('*')
-      .eq('id', id)
-      .single()
+    // Fetch campaign with related assets and activities
+    const [campaignResult, assetsResult, activitiesResult] = await Promise.all([
+      supabase
+        .from('campaigns')
+        .select('*')
+        .eq('id', id)
+        .single(),
+      supabase
+        .from('assets')
+        .select('*')
+        .eq('campaign_id', id),
+      supabase
+        .from('activities')
+        .select('*')
+        .eq('campaign_id', id)
+    ])
 
-    if (error || !campaign) {
+    if (campaignResult.error || !campaignResult.data) {
       return NextResponse.json(
         { error: 'Campaign not found' },
         { status: 404 }
       )
     }
+
+    const campaign = campaignResult.data
 
     // Transform to camelCase
     const transformedCampaign = {
@@ -42,10 +55,11 @@ export async function GET(
       actualSpend: campaign.actual_spend,
       goals: campaign.goals || [],
       channels: campaign.channels || [],
+      progress: campaign.progress || null,
       createdAt: campaign.created_at,
       updatedAt: campaign.updated_at,
-      assets: [],
-      activities: []
+      assets: assetsResult.data || [],
+      activities: activitiesResult.data || []
     }
 
     return NextResponse.json(transformedCampaign)
@@ -77,8 +91,14 @@ export async function PATCH(
     if (body.status !== undefined) updateData.status = body.status
     if (body.launchDate !== undefined) updateData.launch_date = body.launchDate
     if (body.endDate !== undefined) updateData.end_date = body.endDate
+    if (body.distributorPreviewDate !== undefined) updateData.distributor_preview_date = body.distributorPreviewDate
+    if (body.salonLaunchDate !== undefined) updateData.salon_launch_date = body.salonLaunchDate
+    if (body.consumerLaunchDate !== undefined) updateData.consumer_launch_date = body.consumerLaunchDate
     if (body.budget !== undefined) updateData.budget = body.budget
     if (body.actualSpend !== undefined) updateData.actual_spend = body.actualSpend
+    if (body.goals !== undefined) updateData.goals = body.goals
+    if (body.channels !== undefined) updateData.channels = body.channels
+    if (body.progress !== undefined) updateData.progress = body.progress
 
     const { data: campaign, error } = await supabase
       .from('campaigns')
@@ -103,7 +123,13 @@ export async function PATCH(
       performed_by: 'System'
     })
 
-    // Transform to camelCase
+    // Fetch related assets and activities
+    const [assetsResult, activitiesResult] = await Promise.all([
+      supabase.from('assets').select('*').eq('campaign_id', id),
+      supabase.from('activities').select('*').eq('campaign_id', id)
+    ])
+
+    // Transform to camelCase with all fields
     const transformedCampaign = {
       id: campaign.id,
       name: campaign.name,
@@ -112,10 +138,18 @@ export async function PATCH(
       status: campaign.status,
       launchDate: campaign.launch_date,
       endDate: campaign.end_date,
+      distributorPreviewDate: campaign.distributor_preview_date,
+      salonLaunchDate: campaign.salon_launch_date,
+      consumerLaunchDate: campaign.consumer_launch_date,
       budget: campaign.budget,
       actualSpend: campaign.actual_spend,
+      goals: campaign.goals || [],
+      channels: campaign.channels || [],
+      progress: campaign.progress || null,
       createdAt: campaign.created_at,
-      updatedAt: campaign.updated_at
+      updatedAt: campaign.updated_at,
+      assets: assetsResult.data || [],
+      activities: activitiesResult.data || []
     }
 
     return NextResponse.json(transformedCampaign)

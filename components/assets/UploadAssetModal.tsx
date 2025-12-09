@@ -194,7 +194,7 @@ export function UploadAssetModal({ isOpen, onClose, onAssetUploaded, initialData
     }
   }
 
-  const canSubmit = formData.name && (selectedFile || formData.url || isEditing)
+  const canSubmit = formData.name && formData.description && (selectedFile || formData.url || isEditing)
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEditing ? "Edit Asset" : "Upload Asset"} size="lg">
@@ -326,6 +326,7 @@ export function UploadAssetModal({ isOpen, onClose, onAssetUploaded, initialData
           placeholder="Describe this asset..."
           value={formData.description}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          required
         />
 
         <div className="flex justify-end gap-3 pt-6 mt-2">
