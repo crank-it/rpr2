@@ -3,6 +3,7 @@
 import { Upload, Search, Filter, Image as ImageIcon, FileText, Video, File, Pencil, Trash2 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useUser } from '@clerk/nextjs'
 import { UploadAssetModal } from '@/components/assets/UploadAssetModal'
 import { formatDate } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -26,6 +27,7 @@ interface Asset {
 
 export default function AssetsPage() {
   const router = useRouter()
+  const { user } = useUser()
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -68,6 +70,9 @@ export default function AssetsPage() {
   }, [])
 
   const handleAssetUploaded = async (newAsset: any) => {
+    // Get the current user's display name
+    const uploadedByName = user?.fullName || user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || 'Unknown'
+
     try {
       const response = await fetch('/api/assets', {
         method: 'POST',
@@ -78,7 +83,8 @@ export default function AssetsPage() {
           url: newAsset.url || '',
           description: newAsset.description || null,
           tags: newAsset.tags || [],
-          collection: newAsset.collection || null
+          collection: newAsset.collection || null,
+          uploadedBy: uploadedByName
         })
       })
       if (!response.ok) {

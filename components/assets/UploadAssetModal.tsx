@@ -132,7 +132,8 @@ export function UploadAssetModal({ isOpen, onClose, onAssetUploaded, initialData
     setLoading(true)
 
     try {
-      let fileUrl = ''
+      // Keep existing URL when editing without uploading a new file
+      let fileUrl = isEditing && initialData?.url ? initialData.url : ''
 
       // Upload file if selected
       if (selectedFile) {
