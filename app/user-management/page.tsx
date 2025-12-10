@@ -272,14 +272,14 @@ export default function UserManagementPage() {
 
       {/* Users Table Section */}
       <section className="bg-white rounded-xl border border-gray-200 shadow-sm">
-        <div className="p-6 border-b">
+        <div className="p-6">
           <h2 className="text-lg font-semibold text-gray-900">Users</h2>
           <p className="text-sm text-gray-500">Manage team members and their roles</p>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b">
+            <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
@@ -289,7 +289,7 @@ export default function UserManagementPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody>
               {activeUsers.map((user) => {
                 const isCurrentUser = user.id === clerkUser?.id;
                 const isSuperadmin = user.role === "superadmin";
@@ -325,10 +325,14 @@ export default function UserManagementPage() {
                           value={user.status}
                           onChange={(e) => handleStatusChange(user.id, e.target.value)}
                           disabled={actionLoading === user.id}
-                          className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent cursor-pointer"
+                          className={`text-sm border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent cursor-pointer ${
+                            user.status === "active"
+                              ? "bg-green-50 text-green-700 border-green-200"
+                              : "bg-gray-100 text-gray-600 border-gray-200"
+                          }`}
                         >
-                          <option value="active">Active</option>
-                          <option value="deactivated">Deactivated</option>
+                          <option value="active" className="bg-white text-green-700">Active</option>
+                          <option value="deactivated" className="bg-white text-gray-600">Deactivated</option>
                         </select>
                       ) : (
                         <span className={`text-sm ${user.status === "active" ? "text-green-600" : "text-gray-500"}`}>
