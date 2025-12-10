@@ -29,7 +29,7 @@ interface Campaign {
   channels: string[]
   progress: number | null
   assets: unknown[]
-  activities: unknown[]
+  // activities: unknown[]
 }
 
 const getStatusVariant = (status: string) => {
@@ -298,7 +298,7 @@ export default function CampaignDetailPage() {
       )}
 
       {/* Quick Stats */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-1">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -311,7 +311,7 @@ export default function CampaignDetailPage() {
             <p className="text-xs text-muted-foreground mt-1">Marketing materials</p>
           </CardContent>
         </Card>
-        <Card>
+        {/* <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Activity className="h-4 w-4 text-gray-400" />
@@ -322,7 +322,7 @@ export default function CampaignDetailPage() {
             <div className="text-2xl font-semibold">{campaign.activities?.length ?? 0}</div>
             <p className="text-xs text-muted-foreground mt-1">Campaign actions</p>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
 
       {/* Communication */}

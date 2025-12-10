@@ -37,7 +37,6 @@ export async function GET(
       tags: asset.tags || [],
       collection: asset.collection,
       projectId: asset.project_id,
-      campaignId: asset.campaign_id,
       downloads: asset.downloads || 0,
       views: asset.views || 0,
       uploadedBy: asset.uploaded_by,
@@ -76,7 +75,6 @@ export async function PATCH(
     if (body.tags !== undefined) updateData.tags = body.tags
     if (body.collection !== undefined) updateData.collection = body.collection
     if (body.projectId !== undefined) updateData.project_id = body.projectId
-    if (body.campaignId !== undefined) updateData.campaign_id = body.campaignId
 
     const { data: asset, error } = await supabase
       .from('assets')
@@ -104,7 +102,6 @@ export async function PATCH(
       tags: asset.tags || [],
       collection: asset.collection,
       projectId: asset.project_id,
-      campaignId: asset.campaign_id,
       downloads: asset.downloads || 0,
       views: asset.views || 0,
       uploadedBy: asset.uploaded_by,

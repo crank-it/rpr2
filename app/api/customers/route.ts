@@ -30,6 +30,35 @@ export async function GET(request: Request) {
       )
     }
 
+    // Fetch project counts for all customers
+    const customerIds = customers.map(c => c.id)
+    const { data: projectCounts } = await supabase
+      .from('projects')
+      .select('customer_id')
+      .in('customer_id', customerIds)
+
+    // Count projects per customer
+    const projectCountMap: Record<string, number> = {}
+    projectCounts?.forEach(p => {
+      if (p.customer_id) {
+        projectCountMap[p.customer_id] = (projectCountMap[p.customer_id] || 0) + 1
+      }
+    })
+
+    // Fetch activity counts for all customers
+    const { data: activityCounts } = await supabase
+      .from('activities')
+      .select('customer_id')
+      .in('customer_id', customerIds)
+
+    // Count activities per customer
+    const activityCountMap: Record<string, number> = {}
+    activityCounts?.forEach(a => {
+      if (a.customer_id) {
+        activityCountMap[a.customer_id] = (activityCountMap[a.customer_id] || 0) + 1
+      }
+    })
+
     // Transform to camelCase for frontend
     const transformedCustomers = customers.map(customer => ({
       id: customer.id,
@@ -49,7 +78,10 @@ export async function GET(request: Request) {
       createdAt: customer.created_at,
       updatedAt: customer.updated_at,
       lastContactAt: customer.last_contact_at,
-      _count: { projects: 0, activities: 0 }
+      _count: {
+        projects: projectCountMap[customer.id] || 0,
+        activities: activityCountMap[customer.id] || 0
+      }
     }))
 
     return NextResponse.json(transformedCustomers)

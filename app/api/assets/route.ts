@@ -45,7 +45,6 @@ export async function GET(request: Request) {
       tags: asset.tags || [],
       collection: asset.collection,
       projectId: asset.project_id,
-      campaignId: asset.campaign_id,
       downloads: asset.downloads || 0,
       views: asset.views || 0,
       uploadedBy: asset.uploaded_by,
@@ -78,7 +77,6 @@ export async function POST(request: Request) {
         tags: body.tags || [],
         collection: body.collection || null,
         project_id: body.projectId || null,
-        campaign_id: body.campaignId || null,
         uploaded_by: body.uploadedBy || 'System'
       })
       .select()
@@ -103,7 +101,6 @@ export async function POST(request: Request) {
       tags: asset.tags || [],
       collection: asset.collection,
       projectId: asset.project_id,
-      campaignId: asset.campaign_id,
       downloads: asset.downloads || 0,
       views: asset.views || 0,
       uploadedBy: asset.uploaded_by,

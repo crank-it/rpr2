@@ -276,6 +276,7 @@ export default function CustomersPage() {
               <TableRow>
                 <TableHead className="text-center">Customer</TableHead>
                 <TableHead className="text-center">Type</TableHead>
+                <TableHead className="text-center">Projects</TableHead>
                 <TableHead className="text-center">Brands</TableHead>
                 <TableHead className="text-center">Contact</TableHead>
                 <TableHead className="text-center">Added</TableHead>
@@ -310,6 +311,12 @@ export default function CustomersPage() {
                     <Badge variant={getCustomerTypeVariant(customer.type)}>
                       {customer.type}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{customer._count?.projects || 0}</span>
+                    </div>
                   </TableCell>
                   <TableCell className="text-center">
                     {customer.brands && customer.brands.length > 0 ? (

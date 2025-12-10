@@ -6,6 +6,14 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
+import { MultiSelect } from '@/components/ui/multi-select'
+
+interface Asset {
+  id: string
+  name: string
+  type: string
+  url: string
+}
 
 interface CreateCampaignModalProps {
   isOpen: boolean
@@ -17,6 +25,8 @@ interface CreateCampaignModalProps {
 
 export function CreateCampaignModal({ isOpen, onClose, onCampaignCreated, initialData, isEditing = false }: CreateCampaignModalProps) {
   const [loading, setLoading] = useState(false)
+  const [availableAssets, setAvailableAssets] = useState<Asset[]>([])
+  const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([])
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -31,6 +41,25 @@ export function CreateCampaignModal({ isOpen, onClose, onCampaignCreated, initia
     goals: '',
     progress: '0'
   })
+
+  // Fetch available assets when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchAssets()
+    }
+  }, [isOpen])
+
+  const fetchAssets = async () => {
+    try {
+      const response = await fetch('/api/assets')
+      if (response.ok) {
+        const assets = await response.json()
+        setAvailableAssets(assets)
+      }
+    } catch (error) {
+      console.error('Failed to fetch assets:', error)
+    }
+  }
 
   // Update form data when initialData changes
   useEffect(() => {
@@ -49,6 +78,17 @@ export function CreateCampaignModal({ isOpen, onClose, onCampaignCreated, initia
         goals: initialData.goals?.join(', ') || '',
         progress: initialData.progress !== undefined ? String(initialData.progress) : '0'
       })
+      // Set selected assets when editing (assets is now an array of IDs)
+      if (initialData.assets && Array.isArray(initialData.assets)) {
+        // Check if assets are objects (full asset data) or strings (just IDs)
+        if (typeof initialData.assets[0] === 'object') {
+          setSelectedAssetIds(initialData.assets.map((asset: Asset) => asset.id))
+        } else {
+          setSelectedAssetIds(initialData.assets)
+        }
+      }
+    } else {
+      setSelectedAssetIds([])
     }
   }, [initialData])
 
@@ -71,7 +111,8 @@ export function CreateCampaignModal({ isOpen, onClose, onCampaignCreated, initia
         endDate: formData.endDate ? new Date(formData.endDate).toISOString() : null,
         distributorPreviewDate: formData.distributorPreviewDate ? new Date(formData.distributorPreviewDate).toISOString() : null,
         salonLaunchDate: formData.salonLaunchDate ? new Date(formData.salonLaunchDate).toISOString() : null,
-        consumerLaunchDate: formData.consumerLaunchDate ? new Date(formData.consumerLaunchDate).toISOString() : null
+        consumerLaunchDate: formData.consumerLaunchDate ? new Date(formData.consumerLaunchDate).toISOString() : null,
+        assetIds: selectedAssetIds
       }
 
       let result
@@ -115,6 +156,7 @@ export function CreateCampaignModal({ isOpen, onClose, onCampaignCreated, initia
         goals: '',
         progress: '0'
       })
+      setSelectedAssetIds([])
     } catch (error) {
       console.error('Failed to save campaign:', error)
     } finally {
@@ -228,6 +270,26 @@ export function CreateCampaignModal({ isOpen, onClose, onCampaignCreated, initia
               </div>
             )}
           </div>
+        </div>
+
+        {/* Assets */}
+        <div className="relative">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Campaign Assets <span className="font-normal text-gray-500">(Optional)</span></h3>
+          <MultiSelect
+            label="Select Assets"
+            placeholder="Choose assets for this campaign..."
+            options={availableAssets.map(asset => ({
+              value: asset.id,
+              label: `${asset.name} (${asset.type})`
+            }))}
+            value={selectedAssetIds}
+            onChange={setSelectedAssetIds}
+          />
+          {selectedAssetIds.length > 0 && (
+            <p className="text-xs text-gray-500 mt-2">
+              {selectedAssetIds.length} asset{selectedAssetIds.length > 1 ? 's' : ''} selected
+            </p>
+          )}
         </div>
 
         {/* Budget & Goals */}

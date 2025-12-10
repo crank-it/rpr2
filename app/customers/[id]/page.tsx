@@ -28,6 +28,15 @@ interface Customer {
   created_at: string
 }
 
+interface Project {
+  id: string
+  title: string
+  status: string
+  priority: string
+  due_date: string | null
+  created_at: string
+}
+
 const getCustomerTypeVariant = (type: string) => {
   const variants: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
     'SALON': 'default',
@@ -42,6 +51,7 @@ export default function CustomerDetailPage() {
   const params = useParams()
   const customerId = params.id as string
   const [customer, setCustomer] = useState<Customer | null>(null)
+  const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
@@ -61,8 +71,23 @@ export default function CustomerDetailPage() {
     setLoading(false)
   }
 
+  const fetchProjects = async () => {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('customer_id', customerId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching projects:', error)
+    } else {
+      setProjects(data || [])
+    }
+  }
+
   useEffect(() => {
     fetchCustomer()
+    fetchProjects()
   }, [customerId])
 
   const handleCustomerUpdated = async (updatedCustomer: any) => {
@@ -130,11 +155,11 @@ export default function CustomerDetailPage() {
               <Badge variant={getCustomerTypeVariant(customer.type)}>
                 {customer.type}
               </Badge>
-              {customer.primary_contact && (
+              {/* {customer.primary_contact && (
                 <span className="text-sm text-muted-foreground">
                   Contact: {customer.primary_contact}
                 </span>
-              )}
+              )} */}
             </div>
           </div>
           <Button variant="outline" onClick={() => setIsEditModalOpen(true)}>
@@ -157,9 +182,41 @@ export default function CustomerDetailPage() {
             </Button>
           </CardHeader>
           <CardContent>
-            <div className="text-sm text-muted-foreground text-center py-8">
-              No projects yet
-            </div>
+            {projects.length === 0 ? (
+              <div className="text-sm text-muted-foreground text-center py-8">
+                No projects yet
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {projects.slice(0, 5).map((project) => (
+                  <Link
+                    key={project.id}
+                    href={`/projects/${project.id}`}
+                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium text-sm">{project.title}</p>
+                        {project.due_date && (
+                          <p className="text-xs text-muted-foreground">
+                            Due: {formatDate(project.due_date)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <Badge variant={project.status === 'COMPLETED' ? 'success' : project.status === 'IN_PROGRESS' ? 'default' : 'secondary'}>
+                      {project.status.replace('_', ' ')}
+                    </Badge>
+                  </Link>
+                ))}
+                {projects.length > 5 && (
+                  <p className="text-sm text-muted-foreground text-center pt-2">
+                    +{projects.length - 5} more projects
+                  </p>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 

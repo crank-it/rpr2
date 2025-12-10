@@ -68,14 +68,18 @@ export async function GET(request: Request) {
     }
 
     // Transform to expected format
+    // Append 'Z' to timestamps to indicate UTC timezone
     const transformedComments = (comments || []).map(comment => ({
       id: comment.id,
       author: comment.author,
       authorEmail: comment.author_email,
       content: comment.content,
-      timestamp: comment.created_at,
+      timestamp: comment.created_at ? comment.created_at.replace(' ', 'T') + 'Z' : null,
       reactions: comment.reactions || [],
-      replies: replies[comment.id] || []
+      replies: (replies[comment.id] || []).map((reply: any) => ({
+        ...reply,
+        timestamp: reply.timestamp ? reply.timestamp.replace(' ', 'T') + 'Z' : null
+      }))
     }))
 
     return NextResponse.json(transformedComments)
@@ -126,7 +130,7 @@ export async function POST(request: Request) {
       author: comment.author,
       authorEmail: comment.author_email,
       content: comment.content,
-      timestamp: comment.created_at,
+      timestamp: comment.created_at ? comment.created_at.replace(' ', 'T') + 'Z' : null,
       reactions: comment.reactions || [],
       replies: []
     }

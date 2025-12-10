@@ -10,7 +10,6 @@ interface Comment {
   authorAvatar?: string
   content: string
   timestamp: string
-  rawTimestamp?: string
   replies?: Comment[]
 }
 
@@ -20,19 +19,51 @@ interface CommentThreadProps {
   onAddReply?: (parentId: string, reply: Comment) => void
 }
 
-function formatTimestamp(timestamp: string): string {
+function formatTimestamp(timestamp: string | undefined | null): string {
+  if (!timestamp) return 'Unknown time'
+
   const date = new Date(timestamp)
+
+  // Check if date is valid
+  if (isNaN(date.getTime())) {
+    return 'Unknown time'
+  }
+
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
+  const diffSecs = Math.floor(diffMs / 1000)
   const diffMins = Math.floor(diffMs / 60000)
   const diffHours = Math.floor(diffMs / 3600000)
   const diffDays = Math.floor(diffMs / 86400000)
+  const diffWeeks = Math.floor(diffDays / 7)
+  const diffMonths = Math.floor(diffDays / 30)
 
-  if (diffMins < 1) return 'Just now'
+  if (diffSecs < 60) return 'Just now'
   if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`
   if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
   if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+  if (diffWeeks < 4) return `${diffWeeks} week${diffWeeks > 1 ? 's' : ''} ago`
+  if (diffMonths < 12) return `${diffMonths} month${diffMonths > 1 ? 's' : ''} ago`
   return date.toLocaleDateString()
+}
+
+// Component that displays real-time relative timestamp
+function RelativeTime({ timestamp }: { timestamp: string }) {
+  const [formattedTime, setFormattedTime] = useState(() => formatTimestamp(timestamp))
+
+  useEffect(() => {
+    // Update immediately
+    setFormattedTime(formatTimestamp(timestamp))
+
+    // Update every minute for real-time display
+    const interval = setInterval(() => {
+      setFormattedTime(formatTimestamp(timestamp))
+    }, 60000) // Update every minute
+
+    return () => clearInterval(interval)
+  }, [timestamp])
+
+  return <span className="text-sm text-gray-500">{formattedTime}</span>
 }
 
 export function CommentThread({ entityType, entityId }: CommentThreadProps) {
@@ -52,18 +83,8 @@ export function CommentThread({ entityType, entityId }: CommentThreadProps) {
         const response = await fetch(`/api/comments?entityType=${entityType}&entityId=${entityId}`)
         if (response.ok) {
           const data = await response.json()
-          // Transform timestamps for display
-          const transformedComments = data.map((comment: Comment & { timestamp: string }) => ({
-            ...comment,
-            rawTimestamp: comment.timestamp,
-            timestamp: formatTimestamp(comment.timestamp),
-            replies: comment.replies?.map((reply: Comment & { timestamp: string }) => ({
-              ...reply,
-              rawTimestamp: reply.timestamp,
-              timestamp: formatTimestamp(reply.timestamp)
-            }))
-          }))
-          setComments(transformedComments)
+          // Keep raw timestamps - formatting will be done in the component
+          setComments(data)
         }
       } catch (error) {
         console.error('Failed to fetch comments:', error)
@@ -98,8 +119,6 @@ export function CommentThread({ entityType, entityId }: CommentThreadProps) {
         const comment = await response.json()
         setComments([...comments, {
           ...comment,
-          rawTimestamp: comment.timestamp,
-          timestamp: formatTimestamp(comment.timestamp),
           replies: []
         }])
         setNewComment('')
@@ -229,10 +248,7 @@ function CommentItem({ comment, entityType, entityId, onReplyAdded, isReply = fa
 
       if (response.ok) {
         const reply = await response.json()
-        onReplyAdded(comment.id, {
-          ...reply,
-          timestamp: formatTimestamp(reply.timestamp)
-        })
+        onReplyAdded(comment.id, reply)
         setReplyContent('')
         setShowReply(false)
       }
@@ -255,7 +271,7 @@ function CommentItem({ comment, entityType, entityId, onReplyAdded, isReply = fa
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
             <span className="font-medium text-gray-900">{comment.author}</span>
-            <span className="text-sm text-gray-500">{comment.timestamp}</span>
+            <RelativeTime timestamp={comment.timestamp} />
           </div>
 
           <p className="text-gray-700 mb-3">{comment.content}</p>

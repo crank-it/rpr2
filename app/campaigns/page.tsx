@@ -72,57 +72,15 @@ export default function CampaignsPage() {
     setLoading(false)
   }
 
-  const handleCampaignCreated = async (newCampaign: any) => {
-    try {
-      const response = await fetch('/api/campaigns', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newCampaign.name,
-          description: newCampaign.description || null,
-          audience: newCampaign.audience || 'BOTH',
-          status: newCampaign.status || 'DRAFT',
-          launchDate: newCampaign.launchDate || newCampaign.launch_date || null,
-          endDate: newCampaign.endDate || newCampaign.end_date || null,
-          budget: newCampaign.budget || null
-        })
-      })
-      if (!response.ok) {
-        throw new Error('Failed to create campaign')
-      }
-      const data = await response.json()
-      setCampaigns([data, ...campaigns])
-    } catch (error) {
-      console.error('Error creating campaign:', error)
-    }
+  const handleCampaignCreated = (newCampaign: any) => {
+    // The modal already created the campaign via API, just add it to state
+    setCampaigns([newCampaign, ...campaigns])
     setIsCreateModalOpen(false)
   }
 
-  const handleCampaignUpdated = async (updatedCampaign: any) => {
-    if (!editingCampaign) return
-
-    try {
-      const response = await fetch(`/api/campaigns/${editingCampaign.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: updatedCampaign.name,
-          description: updatedCampaign.description,
-          audience: updatedCampaign.audience,
-          status: updatedCampaign.status,
-          launchDate: updatedCampaign.launchDate || updatedCampaign.launch_date,
-          endDate: updatedCampaign.endDate || updatedCampaign.end_date,
-          budget: updatedCampaign.budget
-        })
-      })
-      if (!response.ok) {
-        throw new Error('Failed to update campaign')
-      }
-      const data = await response.json()
-      setCampaigns(campaigns.map(c => c.id === editingCampaign.id ? data : c))
-    } catch (error) {
-      console.error('Error updating campaign:', error)
-    }
+  const handleCampaignUpdated = (updatedCampaign: any) => {
+    // The modal already updated the campaign via API, just update state
+    setCampaigns(campaigns.map(c => c.id === updatedCampaign.id ? updatedCampaign : c))
     setEditingCampaign(null)
   }
 

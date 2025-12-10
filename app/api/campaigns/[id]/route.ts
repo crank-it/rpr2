@@ -13,17 +13,13 @@ export async function GET(
   try {
     const { id } = await params
 
-    // Fetch campaign with related assets and activities
-    const [campaignResult, assetsResult, activitiesResult] = await Promise.all([
+    // Fetch campaign and activities
+    const [campaignResult, activitiesResult] = await Promise.all([
       supabase
         .from('campaigns')
         .select('*')
         .eq('id', id)
         .single(),
-      supabase
-        .from('assets')
-        .select('*')
-        .eq('campaign_id', id),
       supabase
         .from('activities')
         .select('*')
@@ -38,6 +34,16 @@ export async function GET(
     }
 
     const campaign = campaignResult.data
+
+    // Fetch full asset details if campaign has assets
+    let assets: unknown[] = []
+    if (campaign.assets && campaign.assets.length > 0) {
+      const { data: assetData } = await supabase
+        .from('assets')
+        .select('*')
+        .in('id', campaign.assets)
+      assets = assetData || []
+    }
 
     // Transform to camelCase
     const transformedCampaign = {
@@ -58,7 +64,7 @@ export async function GET(
       progress: campaign.progress || null,
       createdAt: campaign.created_at,
       updatedAt: campaign.updated_at,
-      assets: assetsResult.data || [],
+      assets: assets,
       activities: activitiesResult.data || []
     }
 
@@ -99,6 +105,7 @@ export async function PATCH(
     if (body.goals !== undefined) updateData.goals = body.goals
     if (body.channels !== undefined) updateData.channels = body.channels
     if (body.progress !== undefined) updateData.progress = body.progress
+    if (body.assetIds !== undefined) updateData.assets = body.assetIds
 
     const { data: campaign, error } = await supabase
       .from('campaigns')
@@ -123,11 +130,21 @@ export async function PATCH(
       performed_by: 'System'
     })
 
-    // Fetch related assets and activities
-    const [assetsResult, activitiesResult] = await Promise.all([
-      supabase.from('assets').select('*').eq('campaign_id', id),
-      supabase.from('activities').select('*').eq('campaign_id', id)
-    ])
+    // Fetch full asset details if campaign has assets
+    let assets: unknown[] = []
+    if (campaign.assets && campaign.assets.length > 0) {
+      const { data: assetData } = await supabase
+        .from('assets')
+        .select('*')
+        .in('id', campaign.assets)
+      assets = assetData || []
+    }
+
+    // Fetch activities
+    const { data: activitiesData } = await supabase
+      .from('activities')
+      .select('*')
+      .eq('campaign_id', id)
 
     // Transform to camelCase with all fields
     const transformedCampaign = {
@@ -148,8 +165,8 @@ export async function PATCH(
       progress: campaign.progress || null,
       createdAt: campaign.created_at,
       updatedAt: campaign.updated_at,
-      assets: assetsResult.data || [],
-      activities: activitiesResult.data || []
+      assets: assets,
+      activities: activitiesData || []
     }
 
     return NextResponse.json(transformedCampaign)

@@ -49,7 +49,8 @@ export async function GET(request: Request) {
       progress: typeof campaign.progress === 'number' ? campaign.progress : 0,
       createdAt: campaign.created_at,
       updatedAt: campaign.updated_at,
-      _count: { assets: 0, activities: 0 }
+      assets: campaign.assets || [],
+      _count: { assets: campaign.assets?.length || 0, activities: 0 }
     }))
 
     return NextResponse.json(transformedCampaigns)
@@ -78,7 +79,8 @@ export async function POST(request: Request) {
         budget: body.budget || null,
         actual_spend: body.actualSpend || null,
         goals: body.goals || [],
-        progress: body.progress !== undefined ? body.progress : 0
+        progress: body.progress !== undefined ? body.progress : 0,
+        assets: body.assetIds || []
       })
       .select()
       .single()
@@ -99,6 +101,16 @@ export async function POST(request: Request) {
       performed_by: 'System'
     })
 
+    // Fetch full asset details if campaign has assets
+    let assets: unknown[] = []
+    if (campaign.assets && campaign.assets.length > 0) {
+      const { data: assetData } = await supabase
+        .from('assets')
+        .select('*')
+        .in('id', campaign.assets)
+      assets = assetData || []
+    }
+
     // Transform to camelCase
     const transformedCampaign = {
       id: campaign.id,
@@ -110,8 +122,12 @@ export async function POST(request: Request) {
       endDate: campaign.end_date,
       budget: campaign.budget,
       actualSpend: campaign.actual_spend,
+      goals: campaign.goals || [],
+      progress: campaign.progress || 0,
       createdAt: campaign.created_at,
-      updatedAt: campaign.updated_at
+      updatedAt: campaign.updated_at,
+      assets: assets,
+      _count: { assets: assets.length, activities: 0 }
     }
 
     return NextResponse.json(transformedCampaign)
