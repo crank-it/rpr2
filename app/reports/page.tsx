@@ -38,7 +38,7 @@ export default function ReportsPage() {
       if (response.ok) {
         const campaigns = await response.json()
 
-        const activeCampaigns = campaigns.filter((c: Campaign) => c.status === 'ACTIVE')
+        const activeCampaigns = campaigns.filter((c: Campaign) => c.status?.toLowerCase() === 'active')
         const totalBudget = campaigns.reduce((sum: number, c: Campaign) => sum + (c.budget || 0), 0)
 
         setData({
@@ -225,22 +225,28 @@ export default function ReportsPage() {
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{campaign.name}</span>
-                        <Badge variant={campaign.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-xs">
-                          {campaign.status}
+                        <Badge variant={campaign.status?.toLowerCase() === 'active' ? 'default' : 'secondary'} className="text-xs">
+                          {campaign.status ? campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1).toLowerCase() : ''}
                         </Badge>
                       </div>
                       {campaign.budget && (
                         <span className="text-muted-foreground">${campaign.budget.toLocaleString()}</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div>
+                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                        <span>0%</span>
+                        <span>100%</span>
+                      </div>
                       <div className="flex-1 bg-gray-100 rounded-full h-2">
                         <div
                           className="bg-teal-500 h-2 rounded-full transition-all"
                           style={{ width: `${campaign.progress || 0}%` }}
                         />
                       </div>
-                      <span className="text-xs text-muted-foreground w-10 text-right">{campaign.progress || 0}%</span>
+                      <div className="text-center text-xs text-muted-foreground mt-1">
+                        Progress: {campaign.progress || 0}%
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -262,7 +268,7 @@ export default function ReportsPage() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="cursor-pointer card-hover opacity-50">
+        <Card className="opacity-50">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold">Export Report</h3>
@@ -270,11 +276,11 @@ export default function ReportsPage() {
                 <BarChart3 className="h-5 w-5 text-gray-600" />
               </div>
             </div>
-            <p className="text-sm text-muted-foreground">Available when data is present</p>
+            <p className="text-sm text-muted-foreground">Coming soon</p>
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer card-hover opacity-50">
+        <Card className="opacity-50">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold">Schedule Report</h3>
@@ -282,11 +288,11 @@ export default function ReportsPage() {
                 <Calendar className="h-5 w-5 text-gray-600" />
               </div>
             </div>
-            <p className="text-sm text-muted-foreground">Set up automated email reports</p>
+            <p className="text-sm text-muted-foreground">Coming soon</p>
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer card-hover opacity-50">
+        <Card className="opacity-50">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold">Custom Dashboard</h3>

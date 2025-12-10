@@ -114,24 +114,32 @@ export default function CampaignsPage() {
     }
   }
 
+  const capitalize = (str: string) => {
+    if (!str) return ''
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
+  }
+
   const getStatusVariant = (status: string) => {
+    const s = status?.toUpperCase()
     const variants: Record<string, 'default' | 'secondary' | 'success' | 'warning'> = {
       'DRAFT': 'secondary',
       'SCHEDULED': 'warning',
       'ACTIVE': 'default',
       'COMPLETED': 'success',
-      'PAUSED': 'secondary'
+      'PAUSED': 'secondary',
+      'PLANNING': 'warning'
     }
-    return variants[status] || 'secondary'
+    return variants[s] || 'secondary'
   }
 
   const getAudienceBadgeVariant = (audience: string) => {
+    const a = audience?.toUpperCase()
     const variants: Record<string, 'default' | 'secondary' | 'warning'> = {
       'B2B': 'default',
       'B2C': 'warning',
       'BOTH': 'secondary'
     }
-    return variants[audience] || 'secondary'
+    return variants[a] || 'secondary'
   }
 
   const getDaysUntilLaunch = (date: string | null) => {
@@ -377,10 +385,10 @@ export default function CampaignsPage() {
                         {campaign.name}
                       </h3>
                       <Badge variant={getStatusVariant(campaign.status)}>
-                        {campaign.status}
+                        {capitalize(campaign.status)}
                       </Badge>
                       <Badge variant={getAudienceBadgeVariant(campaign.audience)}>
-                        {campaign.audience}
+                        {campaign.audience?.toUpperCase() === 'BOTH' ? 'Both' : campaign.audience?.toUpperCase()}
                       </Badge>
                       <div className="ml-auto flex items-center gap-1">
                         <Button
@@ -432,23 +440,22 @@ export default function CampaignsPage() {
                 </div>
 
                 {/* Progress Bar */}
-                {campaign.progress && campaign.progress > 0 && (
-                  <>
-                    <Separator className="my-4" />
-                    <div>
-                      <div className="flex justify-between text-xs text-muted-foreground mb-2">
-                        <span>Campaign Progress</span>
-                        <span>{campaign.progress}%</span>
-                      </div>
-                      <div className="w-full bg-gray-100 rounded-full h-2">
-                        <div
-                          className="bg-teal-500 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${campaign.progress}%` }}
-                        />
-                      </div>
-                    </div>
-                  </>
-                )}
+                <Separator className="my-4" />
+                <div>
+                  <div className="flex justify-between text-xs text-muted-foreground mb-2">
+                    <span>0%</span>
+                    <span>100%</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2">
+                    <div
+                      className="bg-teal-500 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${campaign.progress || 0}%` }}
+                    />
+                  </div>
+                  <div className="text-center text-xs text-muted-foreground mt-2">
+                    Campaign Progress: {campaign.progress || 0}%
+                  </div>
+                </div>
               </CardContent>
             </Card>
           ))}

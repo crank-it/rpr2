@@ -67,8 +67,8 @@ export function CreateCampaignModal({ isOpen, onClose, onCampaignCreated, initia
       setFormData({
         name: initialData.name || '',
         description: initialData.description || '',
-        audience: initialData.audience || 'BOTH',
-        status: initialData.status || 'draft',
+        audience: initialData.audience?.toUpperCase() || 'BOTH',
+        status: initialData.status?.toLowerCase() || 'draft',
         launchDate: initialData.launchDate ? new Date(initialData.launchDate).toISOString().split('T')[0] : '',
         endDate: initialData.endDate ? new Date(initialData.endDate).toISOString().split('T')[0] : '',
         distributorPreviewDate: initialData.distributorPreviewDate ? new Date(initialData.distributorPreviewDate).toISOString().split('T')[0] : '',
@@ -236,7 +236,7 @@ export function CreateCampaignModal({ isOpen, onClose, onCampaignCreated, initia
               />
             </div>
 
-            {formData.audience === 'BOTH' && (
+            {formData.audience?.toUpperCase() === 'BOTH' && (
               <div className="p-4 bg-teal-50 border border-teal-200 rounded-md">
                 <p className="text-sm font-medium text-gray-900 mb-3">Coordinated Launch Phases</p>
                 <div className="grid grid-cols-3 gap-3">

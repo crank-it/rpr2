@@ -32,23 +32,36 @@ interface Campaign {
   // activities: unknown[]
 }
 
+const capitalize = (str: string) => {
+  if (!str) return ''
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
+}
+
+const formatAudience = (audience: string) => {
+  if (!audience) return ''
+  const upper = audience.toUpperCase()
+  return upper === 'BOTH' ? 'Both' : upper
+}
+
 const getStatusVariant = (status: string) => {
+  const s = status?.toLowerCase()
   const variants: Record<string, 'default' | 'secondary' | 'success' | 'warning'> = {
     'draft': 'secondary',
     'planning': 'warning',
     'active': 'default',
     'completed': 'success'
   }
-  return variants[status] || 'secondary'
+  return variants[s] || 'secondary'
 }
 
 const getAudienceBadgeVariant = (audience: string) => {
+  const a = audience?.toUpperCase()
   const variants: Record<string, 'default' | 'secondary' | 'warning'> = {
     'B2B': 'default',
     'B2C': 'warning',
     'BOTH': 'secondary'
   }
-  return variants[audience] || 'secondary'
+  return variants[a] || 'secondary'
 }
 
 export default function CampaignDetailPage() {
@@ -138,10 +151,10 @@ export default function CampaignDetailPage() {
           </div>
           <div className="flex gap-2">
             <Badge variant={getStatusVariant(campaign.status)}>
-              {campaign.status}
+              {capitalize(campaign.status)}
             </Badge>
             <Badge variant={getAudienceBadgeVariant(campaign.audience)}>
-              {campaign.audience}
+              {formatAudience(campaign.audience)}
             </Badge>
             <Button variant="outline" onClick={() => setIsEditModalOpen(true)}>
               <Pencil className="mr-2 h-4 w-4" />
@@ -187,7 +200,7 @@ export default function CampaignDetailPage() {
                 <Users className="h-4 w-4" />
                 Audience
               </p>
-              <p className="text-sm font-medium">{campaign.audience}</p>
+              <p className="text-sm font-medium">{formatAudience(campaign.audience)}</p>
             </div>
             <Separator />
             <div>
@@ -225,16 +238,20 @@ export default function CampaignDetailPage() {
       {/* Campaign Progress */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Campaign Progress
-          </CardTitle>
-          <CardDescription>Track completion status</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Campaign Progress
+              </CardTitle>
+              <CardDescription>Track completion status</CardDescription>
+            </div>
+            <span className="text-3xl font-semibold text-gray-900">{progress}%</span>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-3xl font-semibold text-gray-900">{progress}%</span>
+            <div className="flex items-center justify-end">
               <span className="text-sm text-muted-foreground">
                 {progress < 25 && 'Just getting started'}
                 {progress >= 25 && progress < 50 && 'Making progress'}
@@ -242,6 +259,10 @@ export default function CampaignDetailPage() {
                 {progress >= 75 && progress < 100 && 'Almost done'}
                 {progress === 100 && 'Complete!'}
               </span>
+            </div>
+            <div className="flex justify-between text-xs text-muted-foreground mb-1">
+              <span>0%</span>
+              <span>100%</span>
             </div>
             <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
               <div
