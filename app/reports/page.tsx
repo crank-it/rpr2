@@ -143,7 +143,7 @@ export default function ReportsPage() {
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Analytics Placeholder */}
-        <Card>
+        <Card className="opacity-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <LineChart className="h-5 w-5" />
@@ -156,7 +156,8 @@ export default function ReportsPage() {
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 mb-4">
                 <LineChart className="h-8 w-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">No Analytics Data</h3>
+              {/* <h3 className="text-lg font-semibold mb-2">No Analytics Data</h3> */}
+              <h3 className="text-lg font-semibold mb-2">Coming Soon</h3>
               <p className="text-sm text-muted-foreground max-w-sm">
                 Connect your analytics platform to view revenue and traffic metrics here.
               </p>
@@ -165,7 +166,7 @@ export default function ReportsPage() {
         </Card>
 
         {/* Traffic Sources Placeholder */}
-        <Card>
+        <Card className="opacity-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5" />
@@ -178,7 +179,8 @@ export default function ReportsPage() {
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 mb-4">
                 <BarChart3 className="h-8 w-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">No Traffic Data</h3>
+              {/* <h3 className="text-lg font-semibold mb-2">No Traffic Data</h3> */}
+              <h3 className="text-lg font-semibold mb-2">Coming Soon</h3>
               <p className="text-sm text-muted-foreground max-w-sm">
                 Traffic source data will appear here once analytics is connected.
               </p>
@@ -187,7 +189,7 @@ export default function ReportsPage() {
         </Card>
 
         {/* SEO Placeholder */}
-        <Card>
+        <Card className="opacity-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-emerald-600" />
@@ -200,7 +202,8 @@ export default function ReportsPage() {
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 mb-4">
                 <TrendingUp className="h-8 w-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">No SEO Data</h3>
+              {/* <h3 className="text-lg font-semibold mb-2">No SEO Data</h3> */}
+              <h3 className="text-lg font-semibold mb-2">Coming Soon</h3>
               <p className="text-sm text-muted-foreground max-w-sm">
                 Connect SEO tools to track keyword rankings and visibility.
               </p>
