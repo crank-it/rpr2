@@ -51,7 +51,7 @@ const navigation = [
 ]
 
 const secondaryNavigation = [
-  { name: 'Settings', href: '/settings', icon: Settings },
+  // { name: 'Settings', href: '/settings', icon: Settings }, // Temporarily hidden
   { name: 'User Management', href: '/user-management', icon: UserCog },
 ]
 
