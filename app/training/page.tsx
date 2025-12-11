@@ -314,7 +314,7 @@ const CATEGORY_GROUPS = [
 ]
 
 export default function TrainingPage() {
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(['microsoft', 'canva'])
+  const [expandedCategories, setExpandedCategories] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState<'resources' | 'paths' | 'certifications'>('resources')
 
   const toggleCategory = (id: string) => {
@@ -467,7 +467,7 @@ export default function TrainingPage() {
                       </button>
 
                       {isExpanded && (
-                        <div className="border-t">
+                        <div>
                           <div className="p-4 bg-gray-50">
                             <a
                               href={category.portalUrl}
@@ -479,7 +479,7 @@ export default function TrainingPage() {
                               Official Portal: {category.portalUrl}
                             </a>
                           </div>
-                          <div className="divide-y">
+                          <div>
                             {category.modules.map((module, idx) => (
                               <a
                                 key={idx}
@@ -595,7 +595,7 @@ export default function TrainingPage() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b">
+                    <tr>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Platform</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Certification</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Cost</th>
@@ -604,7 +604,7 @@ export default function TrainingPage() {
                   </thead>
                   <tbody>
                     {CERTIFICATION_SUMMARY.map((cert, idx) => (
-                      <tr key={idx} className="border-b last:border-0">
+                      <tr key={idx} className="border-b border-slate-300 last:border-0">
                         <td className="py-3 px-4 text-sm font-medium text-gray-900">{cert.platform}</td>
                         <td className="py-3 px-4 text-sm text-gray-600">{cert.certification}</td>
                         <td className="py-3 px-4">

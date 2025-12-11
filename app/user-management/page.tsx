@@ -6,7 +6,6 @@ import {
   Crown,
   Shield,
   User as UserIcon,
-  Users,
   CheckCircle,
   ChevronDown,
   ChevronUp,
@@ -343,7 +342,7 @@ export default function UserManagementPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1.5 text-sm text-gray-500">
                         <Calendar className="h-3.5 w-3.5" />
-                        {new Date(user.created_at).toLocaleDateString()}
+                        {user.approved_at ? new Date(user.approved_at).toLocaleDateString() : '-'}
                       </div>
                     </td>
                     <td className="px-6 py-4">

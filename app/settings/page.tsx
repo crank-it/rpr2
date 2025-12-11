@@ -12,53 +12,22 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
 
   // Report metrics state
-  const [metrics, setMetrics] = useState([
-    { id: '1', label: 'Total Revenue', value: '287,450', trend: '+12.5%', trendDirection: 'up' },
-    { id: '2', label: 'Active Projects', value: '24', trend: '+3', trendDirection: 'up' },
-    { id: '3', label: 'Total Customers', value: '156', trend: '+8', trendDirection: 'up' },
-    { id: '4', label: 'Asset Library', value: '1,234', trend: '+45', trendDirection: 'up' }
-  ])
+  const [metrics, setMetrics] = useState<{ id: string; label: string; value: string; trend: string; trendDirection: string }[]>([])
 
   // Performance data state
-  const [performanceData, setPerformanceData] = useState([
-    { month: 'Jan', value: 42000 },
-    { month: 'Feb', value: 48000 },
-    { month: 'Mar', value: 45000 },
-    { month: 'Apr', value: 52000 },
-    { month: 'May', value: 58000 },
-    { month: 'Jun', value: 62000 }
-  ])
+  const [performanceData, setPerformanceData] = useState<{ month: string; value: number }[]>([])
 
   // Revenue by Channel state
-  const [revenueByChannel, setRevenueByChannel] = useState([
-    { id: '1', channel: 'Direct Sales', percentage: 45, amount: 129352 },
-    { id: '2', channel: 'Distributor Network', percentage: 30, amount: 86235 },
-    { id: '3', channel: 'Online Store', percentage: 15, amount: 43117 },
-    { id: '4', channel: 'Partnerships', percentage: 10, amount: 28745 }
-  ])
+  const [revenueByChannel, setRevenueByChannel] = useState<{ id: string; channel: string; percentage: number; amount: number }[]>([])
 
   // Traffic Sources state
-  const [trafficSources, setTrafficSources] = useState([
-    { id: '1', source: 'Organic Search', visitors: 12458, percentage: 42 },
-    { id: '2', source: 'Direct', visitors: 8934, percentage: 30 },
-    { id: '3', source: 'Social Media', visitors: 5367, percentage: 18 },
-    { id: '4', source: 'Referral', visitors: 2978, percentage: 10 }
-  ])
+  const [trafficSources, setTrafficSources] = useState<{ id: string; source: string; visitors: number; percentage: number }[]>([])
 
   // Active Campaigns state
-  const [activeCampaigns, setActiveCampaigns] = useState([
-    { id: '1', name: 'Summer Collection Launch', status: 'In Progress', progress: 75 },
-    { id: '2', name: 'Distributor Training Program', status: 'Review', progress: 90 },
-    { id: '3', name: 'Instagram Influencer Collaboration', status: 'In Progress', progress: 45 }
-  ])
+  const [activeCampaigns, setActiveCampaigns] = useState<{ id: string; name: string; status: string; progress: number }[]>([])
 
   // SEO Visibility state
-  const [seoMetrics, setSeoMetrics] = useState([
-    { id: '1', metric: 'Domain Authority', value: 68, trend: '+3' },
-    { id: '2', metric: 'Organic Keywords', value: 1247, trend: '+89' },
-    { id: '3', metric: 'Backlinks', value: 3542, trend: '+124' },
-    { id: '4', metric: 'Monthly Traffic', value: 28945, trend: '+2.4k' }
-  ])
+  const [seoMetrics, setSeoMetrics] = useState<{ id: string; metric: string; value: number; trend: string }[]>([])
 
   const handleSave = async () => {
     setSaving(true)
@@ -74,7 +43,7 @@ export default function SettingsPage() {
   }
 
   const addMetric = () => {
-    const newId = String(metrics.length + 1)
+    const newId = String(Date.now())
     setMetrics([...metrics, {
       id: newId,
       label: 'New Metric',
@@ -94,6 +63,14 @@ export default function SettingsPage() {
     setPerformanceData(updated)
   }
 
+  const addPerformanceData = () => {
+    setPerformanceData([...performanceData, { month: '', value: 0 }])
+  }
+
+  const deletePerformanceData = (index: number) => {
+    setPerformanceData(performanceData.filter((_, i) => i !== index))
+  }
+
   const updateRevenueChannel = (id: string, field: string, value: string) => {
     setRevenueByChannel(revenueByChannel.map(r =>
       r.id === id ? { ...r, [field]: ['percentage', 'amount'].includes(field) ? parseInt(value) || 0 : value } : r
@@ -101,7 +78,7 @@ export default function SettingsPage() {
   }
 
   const addRevenueChannel = () => {
-    const newId = String(revenueByChannel.length + 1)
+    const newId = String(Date.now())
     setRevenueByChannel([...revenueByChannel, {
       id: newId,
       channel: 'New Channel',
@@ -121,7 +98,7 @@ export default function SettingsPage() {
   }
 
   const addTrafficSource = () => {
-    const newId = String(trafficSources.length + 1)
+    const newId = String(Date.now())
     setTrafficSources([...trafficSources, {
       id: newId,
       source: 'New Source',
@@ -141,7 +118,7 @@ export default function SettingsPage() {
   }
 
   const addActiveCampaign = () => {
-    const newId = String(activeCampaigns.length + 1)
+    const newId = String(Date.now())
     setActiveCampaigns([...activeCampaigns, {
       id: newId,
       name: 'New Campaign',
@@ -161,7 +138,7 @@ export default function SettingsPage() {
   }
 
   const addSeoMetric = () => {
-    const newId = String(seoMetrics.length + 1)
+    const newId = String(Date.now())
     setSeoMetrics([...seoMetrics, {
       id: newId,
       metric: 'New Metric',
@@ -207,92 +184,122 @@ export default function SettingsPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {metrics.map((metric) => (
-            <div key={metric.id} className="grid grid-cols-12 gap-4 items-start p-4 border border-gray-100 rounded-lg">
-              <div className="col-span-3">
-                <Input
-                  label="Label"
-                  value={metric.label}
-                  onChange={(e) => updateMetric(metric.id, 'label', e.target.value)}
-                  placeholder="Metric name"
-                />
+          {metrics.length === 0 ? (
+            <p className="text-muted-foreground text-sm text-center py-4">No metrics configured. Click &quot;Add Metric&quot; to get started.</p>
+          ) : (
+            metrics.map((metric) => (
+              <div key={metric.id} className="grid grid-cols-12 gap-4 items-start p-4 border border-gray-100 rounded-lg">
+                <div className="col-span-3">
+                  <Input
+                    label="Label"
+                    value={metric.label}
+                    onChange={(e) => updateMetric(metric.id, 'label', e.target.value)}
+                    placeholder="Metric name"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Input
+                    label="Value"
+                    value={metric.value}
+                    onChange={(e) => updateMetric(metric.id, 'value', e.target.value)}
+                    placeholder="123"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Input
+                    label="Trend"
+                    value={metric.trend}
+                    onChange={(e) => updateMetric(metric.id, 'trend', e.target.value)}
+                    placeholder="+12%"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-900 mb-2">Direction</label>
+                  <select
+                    value={metric.trendDirection}
+                    onChange={(e) => updateMetric(metric.id, 'trendDirection', e.target.value)}
+                    className="luxury-input"
+                  >
+                    <option value="up">Up (Green)</option>
+                    <option value="down">Down (Red)</option>
+                    <option value="neutral">Neutral (Gray)</option>
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-900 mb-2">Preview</label>
+                  <Badge variant={metric.trendDirection === 'up' ? 'success' : metric.trendDirection === 'down' ? 'destructive' : 'secondary'}>
+                    {metric.trend}
+                  </Badge>
+                </div>
+                <div className="col-span-1 flex items-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteMetric(metric.id)}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-              <div className="col-span-2">
-                <Input
-                  label="Value"
-                  value={metric.value}
-                  onChange={(e) => updateMetric(metric.id, 'value', e.target.value)}
-                  placeholder="123"
-                />
-              </div>
-              <div className="col-span-2">
-                <Input
-                  label="Trend"
-                  value={metric.trend}
-                  onChange={(e) => updateMetric(metric.id, 'trend', e.target.value)}
-                  placeholder="+12%"
-                />
-              </div>
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-900 mb-2">Direction</label>
-                <select
-                  value={metric.trendDirection}
-                  onChange={(e) => updateMetric(metric.id, 'trendDirection', e.target.value)}
-                  className="luxury-input"
-                >
-                  <option value="up">Up (Green)</option>
-                  <option value="down">Down (Red)</option>
-                  <option value="neutral">Neutral (Gray)</option>
-                </select>
-              </div>
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-900 mb-2">Preview</label>
-                <Badge variant={metric.trendDirection === 'up' ? 'success' : metric.trendDirection === 'down' ? 'destructive' : 'secondary'}>
-                  {metric.trend}
-                </Badge>
-              </div>
-              <div className="col-span-1 flex items-end">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => deleteMetric(metric.id)}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </CardContent>
       </Card>
 
       {/* Performance Chart Data */}
       <Card>
         <CardHeader>
-          <CardTitle>Performance Chart Data</CardTitle>
-          <CardDescription className="mt-1">
-            Monthly revenue data for the performance chart
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Performance Chart Data</CardTitle>
+              <CardDescription className="mt-1">
+                Monthly revenue data for the performance chart
+              </CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={addPerformanceData}>
+              <Plus className="mr-2 h-3 w-3" />
+              Add Month
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {performanceData.map((data, index) => (
-              <div key={index} className="grid grid-cols-2 gap-4 items-end">
-                <Input
-                  label={`Month ${index + 1}`}
-                  value={data.month}
-                  onChange={(e) => updatePerformanceData(index, 'month', e.target.value)}
-                  placeholder="Jan"
-                />
-                <Input
-                  label="Revenue (AUD)"
-                  type="number"
-                  value={data.value}
-                  onChange={(e) => updatePerformanceData(index, 'value', e.target.value)}
-                  placeholder="42000"
-                />
-              </div>
-            ))}
+            {performanceData.length === 0 ? (
+              <p className="text-muted-foreground text-sm text-center py-4">No performance data configured. Click &quot;Add Month&quot; to get started.</p>
+            ) : (
+              performanceData.map((data, index) => (
+                <div key={index} className="grid grid-cols-12 gap-4 items-end">
+                  <div className="col-span-5">
+                    <Input
+                      label={`Month ${index + 1}`}
+                      value={data.month}
+                      onChange={(e) => updatePerformanceData(index, 'month', e.target.value)}
+                      placeholder="Jan"
+                    />
+                  </div>
+                  <div className="col-span-5">
+                    <Input
+                      label="Revenue (AUD)"
+                      type="number"
+                      value={data.value}
+                      onChange={(e) => updatePerformanceData(index, 'value', e.target.value)}
+                      placeholder="42000"
+                    />
+                  </div>
+                  <div className="col-span-2 flex items-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deletePerformanceData(index)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </CardContent>
       </Card>
@@ -314,48 +321,52 @@ export default function SettingsPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {revenueByChannel.map((channel) => (
-            <div key={channel.id} className="grid grid-cols-12 gap-4 items-end p-4 border border-gray-100 rounded-lg">
-              <div className="col-span-5">
-                <Input
-                  label="Channel Name"
-                  value={channel.channel}
-                  onChange={(e) => updateRevenueChannel(channel.id, 'channel', e.target.value)}
-                  placeholder="Direct Sales"
-                />
+          {revenueByChannel.length === 0 ? (
+            <p className="text-muted-foreground text-sm text-center py-4">No channels configured. Click &quot;Add Channel&quot; to get started.</p>
+          ) : (
+            revenueByChannel.map((channel) => (
+              <div key={channel.id} className="grid grid-cols-12 gap-4 items-end p-4 border border-gray-100 rounded-lg">
+                <div className="col-span-5">
+                  <Input
+                    label="Channel Name"
+                    value={channel.channel}
+                    onChange={(e) => updateRevenueChannel(channel.id, 'channel', e.target.value)}
+                    placeholder="Direct Sales"
+                  />
+                </div>
+                <div className="col-span-3">
+                  <Input
+                    label="Percentage %"
+                    type="number"
+                    value={channel.percentage}
+                    onChange={(e) => updateRevenueChannel(channel.id, 'percentage', e.target.value)}
+                    placeholder="45"
+                    min="0"
+                    max="100"
+                  />
+                </div>
+                <div className="col-span-3">
+                  <Input
+                    label="Amount (AUD)"
+                    type="number"
+                    value={channel.amount}
+                    onChange={(e) => updateRevenueChannel(channel.id, 'amount', e.target.value)}
+                    placeholder="129352"
+                  />
+                </div>
+                <div className="col-span-1 flex items-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteRevenueChannel(channel.id)}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-              <div className="col-span-3">
-                <Input
-                  label="Percentage %"
-                  type="number"
-                  value={channel.percentage}
-                  onChange={(e) => updateRevenueChannel(channel.id, 'percentage', e.target.value)}
-                  placeholder="45"
-                  min="0"
-                  max="100"
-                />
-              </div>
-              <div className="col-span-3">
-                <Input
-                  label="Amount (AUD)"
-                  type="number"
-                  value={channel.amount}
-                  onChange={(e) => updateRevenueChannel(channel.id, 'amount', e.target.value)}
-                  placeholder="129352"
-                />
-              </div>
-              <div className="col-span-1 flex items-end">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => deleteRevenueChannel(channel.id)}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </CardContent>
       </Card>
 
@@ -376,48 +387,52 @@ export default function SettingsPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {trafficSources.map((source) => (
-            <div key={source.id} className="grid grid-cols-12 gap-4 items-end p-4 border border-gray-100 rounded-lg">
-              <div className="col-span-5">
-                <Input
-                  label="Source Name"
-                  value={source.source}
-                  onChange={(e) => updateTrafficSource(source.id, 'source', e.target.value)}
-                  placeholder="Organic Search"
-                />
+          {trafficSources.length === 0 ? (
+            <p className="text-muted-foreground text-sm text-center py-4">No traffic sources configured. Click &quot;Add Source&quot; to get started.</p>
+          ) : (
+            trafficSources.map((source) => (
+              <div key={source.id} className="grid grid-cols-12 gap-4 items-end p-4 border border-gray-100 rounded-lg">
+                <div className="col-span-5">
+                  <Input
+                    label="Source Name"
+                    value={source.source}
+                    onChange={(e) => updateTrafficSource(source.id, 'source', e.target.value)}
+                    placeholder="Organic Search"
+                  />
+                </div>
+                <div className="col-span-3">
+                  <Input
+                    label="Visitors"
+                    type="number"
+                    value={source.visitors}
+                    onChange={(e) => updateTrafficSource(source.id, 'visitors', e.target.value)}
+                    placeholder="12458"
+                  />
+                </div>
+                <div className="col-span-3">
+                  <Input
+                    label="Percentage %"
+                    type="number"
+                    value={source.percentage}
+                    onChange={(e) => updateTrafficSource(source.id, 'percentage', e.target.value)}
+                    placeholder="42"
+                    min="0"
+                    max="100"
+                  />
+                </div>
+                <div className="col-span-1 flex items-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteTrafficSource(source.id)}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-              <div className="col-span-3">
-                <Input
-                  label="Visitors"
-                  type="number"
-                  value={source.visitors}
-                  onChange={(e) => updateTrafficSource(source.id, 'visitors', e.target.value)}
-                  placeholder="12458"
-                />
-              </div>
-              <div className="col-span-3">
-                <Input
-                  label="Percentage %"
-                  type="number"
-                  value={source.percentage}
-                  onChange={(e) => updateTrafficSource(source.id, 'percentage', e.target.value)}
-                  placeholder="42"
-                  min="0"
-                  max="100"
-                />
-              </div>
-              <div className="col-span-1 flex items-end">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => deleteTrafficSource(source.id)}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </CardContent>
       </Card>
 
@@ -438,47 +453,51 @@ export default function SettingsPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {activeCampaigns.map((campaign) => (
-            <div key={campaign.id} className="grid grid-cols-12 gap-4 items-end p-4 border border-gray-100 rounded-lg">
-              <div className="col-span-5">
-                <Input
-                  label="Campaign Name"
-                  value={campaign.name}
-                  onChange={(e) => updateActiveCampaign(campaign.id, 'name', e.target.value)}
-                  placeholder="Summer Collection Launch"
-                />
+          {activeCampaigns.length === 0 ? (
+            <p className="text-muted-foreground text-sm text-center py-4">No campaigns configured. Click &quot;Add Campaign&quot; to get started.</p>
+          ) : (
+            activeCampaigns.map((campaign) => (
+              <div key={campaign.id} className="grid grid-cols-12 gap-4 items-end p-4 border border-gray-100 rounded-lg">
+                <div className="col-span-5">
+                  <Input
+                    label="Campaign Name"
+                    value={campaign.name}
+                    onChange={(e) => updateActiveCampaign(campaign.id, 'name', e.target.value)}
+                    placeholder="Summer Collection Launch"
+                  />
+                </div>
+                <div className="col-span-3">
+                  <Input
+                    label="Status"
+                    value={campaign.status}
+                    onChange={(e) => updateActiveCampaign(campaign.id, 'status', e.target.value)}
+                    placeholder="In Progress"
+                  />
+                </div>
+                <div className="col-span-3">
+                  <Input
+                    label="Progress %"
+                    type="number"
+                    value={campaign.progress}
+                    onChange={(e) => updateActiveCampaign(campaign.id, 'progress', e.target.value)}
+                    placeholder="75"
+                    min="0"
+                    max="100"
+                  />
+                </div>
+                <div className="col-span-1 flex items-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteActiveCampaign(campaign.id)}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-              <div className="col-span-3">
-                <Input
-                  label="Status"
-                  value={campaign.status}
-                  onChange={(e) => updateActiveCampaign(campaign.id, 'status', e.target.value)}
-                  placeholder="In Progress"
-                />
-              </div>
-              <div className="col-span-3">
-                <Input
-                  label="Progress %"
-                  type="number"
-                  value={campaign.progress}
-                  onChange={(e) => updateActiveCampaign(campaign.id, 'progress', e.target.value)}
-                  placeholder="75"
-                  min="0"
-                  max="100"
-                />
-              </div>
-              <div className="col-span-1 flex items-end">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => deleteActiveCampaign(campaign.id)}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </CardContent>
       </Card>
 
@@ -499,45 +518,49 @@ export default function SettingsPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {seoMetrics.map((metric) => (
-            <div key={metric.id} className="grid grid-cols-12 gap-4 items-end p-4 border border-gray-100 rounded-lg">
-              <div className="col-span-5">
-                <Input
-                  label="Metric Name"
-                  value={metric.metric}
-                  onChange={(e) => updateSeoMetric(metric.id, 'metric', e.target.value)}
-                  placeholder="Domain Authority"
-                />
+          {seoMetrics.length === 0 ? (
+            <p className="text-muted-foreground text-sm text-center py-4">No SEO metrics configured. Click &quot;Add Metric&quot; to get started.</p>
+          ) : (
+            seoMetrics.map((metric) => (
+              <div key={metric.id} className="grid grid-cols-12 gap-4 items-end p-4 border border-gray-100 rounded-lg">
+                <div className="col-span-5">
+                  <Input
+                    label="Metric Name"
+                    value={metric.metric}
+                    onChange={(e) => updateSeoMetric(metric.id, 'metric', e.target.value)}
+                    placeholder="Domain Authority"
+                  />
+                </div>
+                <div className="col-span-3">
+                  <Input
+                    label="Value"
+                    type="number"
+                    value={metric.value}
+                    onChange={(e) => updateSeoMetric(metric.id, 'value', e.target.value)}
+                    placeholder="68"
+                  />
+                </div>
+                <div className="col-span-3">
+                  <Input
+                    label="Trend"
+                    value={metric.trend}
+                    onChange={(e) => updateSeoMetric(metric.id, 'trend', e.target.value)}
+                    placeholder="+3"
+                  />
+                </div>
+                <div className="col-span-1 flex items-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteSeoMetric(metric.id)}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-              <div className="col-span-3">
-                <Input
-                  label="Value"
-                  type="number"
-                  value={metric.value}
-                  onChange={(e) => updateSeoMetric(metric.id, 'value', e.target.value)}
-                  placeholder="68"
-                />
-              </div>
-              <div className="col-span-3">
-                <Input
-                  label="Trend"
-                  value={metric.trend}
-                  onChange={(e) => updateSeoMetric(metric.id, 'trend', e.target.value)}
-                  placeholder="+3"
-                />
-              </div>
-              <div className="col-span-1 flex items-end">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => deleteSeoMetric(metric.id)}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </CardContent>
       </Card>
 
