@@ -1,10 +1,28 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { currentUser } from '@clerk/nextjs/server'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+async function getCurrentUserName() {
+  try {
+    const user = await currentUser()
+    if (user) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('name, email')
+        .eq('id', user.id)
+        .single()
+      return userData?.name || userData?.email || user.emailAddresses?.[0]?.emailAddress || 'System'
+    }
+    return 'System'
+  } catch {
+    return 'System'
+  }
+}
 
 export async function GET(
   request: Request,
@@ -74,6 +92,14 @@ export async function PATCH(
   try {
     const { id } = await params
     const body = await request.json()
+    const performedBy = await getCurrentUserName()
+
+    // Fetch existing project to compare changes
+    const { data: existingProject } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('id', id)
+      .single()
 
     const updateData: Record<string, unknown> = {
       title: body.title,
@@ -104,13 +130,74 @@ export async function PATCH(
       )
     }
 
-    // Log activity
-    await supabase.from('activities').insert({
-      type: 'project_updated',
-      description: `Project "${project.title}" was updated`,
-      project_id: project.id,
-      performed_by: 'System'
-    })
+    // Helper to normalize values for comparison (handles null, undefined, empty string, and dates)
+    const normalize = (val: unknown): string => {
+      if (val === null || val === undefined || val === '') return ''
+      if (typeof val === 'string' && val.includes('T')) {
+        return val.split('T')[0]
+      }
+      return String(val)
+    }
+
+    // Log detailed activities for each changed field
+    const activities: { type: string; description: string; project_id: string; performed_by: string }[] = []
+    const projectTitle = project.title
+
+    if (existingProject) {
+      if (body.status !== undefined && normalize(body.status) !== normalize(existingProject.status)) {
+        activities.push({
+          type: 'project_updated',
+          description: `Project "${projectTitle}" updated status`,
+          project_id: project.id,
+          performed_by: performedBy
+        })
+      }
+      if (body.title !== undefined && normalize(body.title) !== normalize(existingProject.title)) {
+        activities.push({
+          type: 'project_updated',
+          description: `Project "${projectTitle}" updated title`,
+          project_id: project.id,
+          performed_by: performedBy
+        })
+      }
+      if (body.description !== undefined && normalize(body.description) !== normalize(existingProject.description)) {
+        activities.push({
+          type: 'project_updated',
+          description: `Project "${projectTitle}" updated description`,
+          project_id: project.id,
+          performed_by: performedBy
+        })
+      }
+      if (body.priority !== undefined && normalize(body.priority) !== normalize(existingProject.priority)) {
+        activities.push({
+          type: 'project_updated',
+          description: `Project "${projectTitle}" updated priority`,
+          project_id: project.id,
+          performed_by: performedBy
+        })
+      }
+      if (body.dueDate !== undefined && normalize(body.dueDate) !== normalize(existingProject.due_date)) {
+        activities.push({
+          type: 'project_updated',
+          description: `Project "${projectTitle}" updated due date`,
+          project_id: project.id,
+          performed_by: performedBy
+        })
+      }
+      if (body.customerId !== undefined && normalize(body.customerId) !== normalize(existingProject.customer_id)) {
+        activities.push({
+          type: 'project_updated',
+          description: `Project "${projectTitle}" updated customer`,
+          project_id: project.id,
+          performed_by: performedBy
+        })
+      }
+    }
+
+    // Only insert activities if there were actual changes
+    if (activities.length > 0) {
+      await supabase.from('activities').insert(activities)
+    }
 
     // Transform to camelCase
     const transformedProject = {

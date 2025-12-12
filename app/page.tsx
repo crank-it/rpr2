@@ -182,7 +182,7 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
             <CardDescription>
-              Your latest updates across all projects
+              Your latest updates across all projects, campaigns, customers, and assets
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -201,16 +201,7 @@ export default function DashboardPage() {
                       <p className="text-sm font-medium leading-none">{activity.title}</p>
                       <p className="text-xs text-muted-foreground">{activity.type}</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={
-                        activity.status === 'completed' ? 'success' :
-                        activity.status === 'in_progress' ? 'default' :
-                        'secondary'
-                      }>
-                        {activity.status.replace('_', ' ')}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">{activity.time}</span>
-                    </div>
+                    <span className="text-xs text-muted-foreground">{activity.time}</span>
                   </div>
                 ))}
               </div>

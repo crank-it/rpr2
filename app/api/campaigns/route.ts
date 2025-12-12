@@ -1,10 +1,28 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { currentUser } from '@clerk/nextjs/server'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+async function getCurrentUserName() {
+  try {
+    const user = await currentUser()
+    if (user) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('name, email')
+        .eq('id', user.id)
+        .single()
+      return userData?.name || userData?.email || user.emailAddresses?.[0]?.emailAddress || 'System'
+    }
+    return 'System'
+  } catch {
+    return 'System'
+  }
+}
 
 export async function GET(request: Request) {
   try {
@@ -69,6 +87,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
+    const performedBy = await getCurrentUserName()
 
     const { data: campaign, error } = await supabase
       .from('campaigns')
@@ -104,7 +123,7 @@ export async function POST(request: Request) {
       type: 'campaign_created',
       description: `Campaign "${campaign.name}" was created`,
       campaign_id: campaign.id,
-      performed_by: 'System'
+      performed_by: performedBy
     })
 
     // Fetch full asset details if campaign has assets

@@ -1,10 +1,28 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { currentUser } from '@clerk/nextjs/server'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+async function getCurrentUserName() {
+  try {
+    const user = await currentUser()
+    if (user) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('name, email')
+        .eq('id', user.id)
+        .single()
+      return userData?.name || userData?.email || user.emailAddresses?.[0]?.emailAddress || 'System'
+    }
+    return 'System'
+  } catch {
+    return 'System'
+  }
+}
 
 export async function GET(
   request: Request,
@@ -81,6 +99,14 @@ export async function PATCH(
   try {
     const { id } = await params
     const body = await request.json()
+    const performedBy = await getCurrentUserName()
+
+    // Fetch existing customer to compare changes
+    const { data: existingCustomer } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', id)
+      .single()
 
     const { data: customer, error } = await supabase
       .from('customers')
@@ -112,13 +138,114 @@ export async function PATCH(
       )
     }
 
-    // Log activity
-    await supabase.from('activities').insert({
-      type: 'customer_updated',
-      description: `Customer "${customer.name}" was updated`,
-      customer_id: customer.id,
-      performed_by: 'System'
-    })
+    // Helper to normalize values for comparison (handles null, undefined, empty string)
+    const normalize = (val: unknown): string => {
+      if (val === null || val === undefined || val === '') return ''
+      return String(val)
+    }
+
+    // Log detailed activities for each changed field
+    const activities: { type: string; description: string; customer_id: string; performed_by: string }[] = []
+    const customerName = customer.name
+
+    if (existingCustomer) {
+      if (body.name !== undefined && normalize(body.name) !== normalize(existingCustomer.name)) {
+        activities.push({
+          type: 'customer_updated',
+          description: `Customer "${customerName}" updated name`,
+          customer_id: customer.id,
+          performed_by: performedBy
+        })
+      }
+      if (body.type !== undefined && normalize(body.type) !== normalize(existingCustomer.type)) {
+        activities.push({
+          type: 'customer_updated',
+          description: `Customer "${customerName}" updated type to "${body.type}"`,
+          customer_id: customer.id,
+          performed_by: performedBy
+        })
+      }
+      if (body.email !== undefined && normalize(body.email) !== normalize(existingCustomer.email)) {
+        activities.push({
+          type: 'customer_updated',
+          description: `Customer "${customerName}" updated email`,
+          customer_id: customer.id,
+          performed_by: performedBy
+        })
+      }
+      if (body.phone !== undefined && normalize(body.phone) !== normalize(existingCustomer.phone)) {
+        activities.push({
+          type: 'customer_updated',
+          description: `Customer "${customerName}" updated phone`,
+          customer_id: customer.id,
+          performed_by: performedBy
+        })
+      }
+      if (body.address !== undefined && normalize(body.address) !== normalize(existingCustomer.address)) {
+        activities.push({
+          type: 'customer_updated',
+          description: `Customer "${customerName}" updated address`,
+          customer_id: customer.id,
+          performed_by: performedBy
+        })
+      }
+      if (body.website !== undefined && normalize(body.website) !== normalize(existingCustomer.website)) {
+        activities.push({
+          type: 'customer_updated',
+          description: `Customer "${customerName}" updated website`,
+          customer_id: customer.id,
+          performed_by: performedBy
+        })
+      }
+      const primaryContact = body.primaryContact || body.primary_contact
+      if (primaryContact !== undefined && normalize(primaryContact) !== normalize(existingCustomer.primary_contact)) {
+        activities.push({
+          type: 'customer_updated',
+          description: `Customer "${customerName}" updated primary contact`,
+          customer_id: customer.id,
+          performed_by: performedBy
+        })
+      }
+      if (body.notes !== undefined && normalize(body.notes) !== normalize(existingCustomer.notes)) {
+        activities.push({
+          type: 'customer_updated',
+          description: `Customer "${customerName}" updated notes`,
+          customer_id: customer.id,
+          performed_by: performedBy
+        })
+      }
+      if (body.brands !== undefined && JSON.stringify(body.brands) !== JSON.stringify(existingCustomer.brands)) {
+        activities.push({
+          type: 'customer_updated',
+          description: `Customer "${customerName}" updated brands`,
+          customer_id: customer.id,
+          performed_by: performedBy
+        })
+      }
+      const spendingTier = body.spendingTier || body.spending_tier
+      if (spendingTier !== undefined && normalize(spendingTier) !== normalize(existingCustomer.spending_tier)) {
+        activities.push({
+          type: 'customer_updated',
+          description: `Customer "${customerName}" updated spending tier`,
+          customer_id: customer.id,
+          performed_by: performedBy
+        })
+      }
+      const annualSpend = body.annualSpend || body.annual_spend
+      if (annualSpend !== undefined && normalize(annualSpend) !== normalize(existingCustomer.annual_spend)) {
+        activities.push({
+          type: 'customer_updated',
+          description: `Customer "${customerName}" updated annual spend`,
+          customer_id: customer.id,
+          performed_by: performedBy
+        })
+      }
+    }
+
+    // Only insert activities if there were actual changes
+    if (activities.length > 0) {
+      await supabase.from('activities').insert(activities)
+    }
 
     // Transform to camelCase
     const transformedCustomer = {

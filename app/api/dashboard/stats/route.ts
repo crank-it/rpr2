@@ -39,15 +39,53 @@ export async function GET() {
       .order('created_at', { ascending: false })
       .limit(5)
 
+    // Get entity statuses for activities
+    const activities = recentActivity || []
+
+    // Collect entity IDs by type (activities use project_id, campaign_id, customer_id columns)
+    const projectIds = activities.filter(a => a.project_id).map(a => a.project_id)
+    const campaignIds = activities.filter(a => a.campaign_id).map(a => a.campaign_id)
+
+    // Fetch statuses from related tables (customers don't have status)
+    const [projectStatuses, campaignStatuses] = await Promise.all([
+      projectIds.length > 0
+        ? supabase.from('projects').select('id, status').in('id', projectIds)
+        : { data: [] },
+      campaignIds.length > 0
+        ? supabase.from('campaigns').select('id, status').in('id', campaignIds)
+        : { data: [] }
+    ])
+
+    // Create lookup maps for statuses
+    const statusMap: Record<string, string> = {}
+    projectStatuses.data?.forEach(p => { statusMap[`project-${p.id}`] = p.status })
+    campaignStatuses.data?.forEach(c => { statusMap[`campaign-${c.id}`] = c.status })
+
     // Format activity for frontend
-    const formattedActivity = (recentActivity || []).map((activity) => {
+    const formattedActivity = activities.map((activity) => {
+      // Determine entity type and get status
+      let entityType = 'Activity'
+      let entityStatus = ''
+
+      if (activity.project_id) {
+        entityType = 'Project'
+        entityStatus = statusMap[`project-${activity.project_id}`] || ''
+      } else if (activity.campaign_id) {
+        entityType = 'Campaign'
+        entityStatus = statusMap[`campaign-${activity.campaign_id}`] || ''
+      } else if (activity.customer_id) {
+        entityType = 'Customer'
+        // Customers don't have status
+      } else if (activity.asset_id) {
+        entityType = 'Asset'
+        // Assets don't have status
+      }
+
       return {
         id: activity.id,
         title: activity.description || 'Activity',
-        type: activity.type?.includes('project') ? 'Project' :
-              activity.type?.includes('campaign') ? 'Campaign' :
-              activity.type?.includes('customer') ? 'Customer' : 'Activity',
-        status: activity.type?.includes('created') ? 'completed' : 'in_progress',
+        type: entityType,
+        status: entityStatus,
         time: getRelativeTime(new Date(activity.created_at))
       }
     })

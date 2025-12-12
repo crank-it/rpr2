@@ -1,10 +1,29 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { currentUser } from '@clerk/nextjs/server'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+async function getCurrentUserName() {
+  try {
+    const user = await currentUser()
+    if (user) {
+      // Get user details from users table
+      const { data: userData } = await supabase
+        .from('users')
+        .select('name, email')
+        .eq('id', user.id)
+        .single()
+      return userData?.name || userData?.email || user.emailAddresses?.[0]?.emailAddress || 'System'
+    }
+    return 'System'
+  } catch {
+    return 'System'
+  }
+}
 
 export async function GET(
   request: Request,
@@ -85,6 +104,14 @@ export async function PATCH(
   try {
     const { id } = await params
     const body = await request.json()
+    const performedBy = await getCurrentUserName()
+
+    // Fetch existing campaign to compare changes
+    const { data: existingCampaign } = await supabase
+      .from('campaigns')
+      .select('*')
+      .eq('id', id)
+      .single()
 
     // Build update object with only provided fields
     const updateData: Record<string, unknown> = {
@@ -122,13 +149,107 @@ export async function PATCH(
       )
     }
 
-    // Log activity
-    await supabase.from('activities').insert({
-      type: 'campaign_updated',
-      description: `Campaign "${campaign.name}" was updated`,
-      campaign_id: campaign.id,
-      performed_by: 'System'
-    })
+    // Helper to normalize values for comparison (handles null, undefined, empty string, and dates)
+    const normalize = (val: unknown): string => {
+      if (val === null || val === undefined || val === '') return ''
+      if (typeof val === 'string' && val.includes('T')) {
+        // Normalize date strings to YYYY-MM-DD format
+        return val.split('T')[0]
+      }
+      return String(val)
+    }
+
+    // Log detailed activities for each changed field
+    const activities: { type: string; description: string; campaign_id: string; performed_by: string }[] = []
+    const campaignName = campaign.name
+
+    if (existingCampaign) {
+      if (body.status !== undefined && normalize(body.status) !== normalize(existingCampaign.status)) {
+        activities.push({
+          type: 'campaign_updated',
+          description: `Campaign "${campaignName}" updated status`,
+          campaign_id: campaign.id,
+          performed_by: performedBy
+        })
+      }
+      if (body.name !== undefined && normalize(body.name) !== normalize(existingCampaign.name)) {
+        activities.push({
+          type: 'campaign_updated',
+          description: `Campaign "${campaignName}" updated name`,
+          campaign_id: campaign.id,
+          performed_by: performedBy
+        })
+      }
+      if (body.description !== undefined && normalize(body.description) !== normalize(existingCampaign.description)) {
+        activities.push({
+          type: 'campaign_updated',
+          description: `Campaign "${campaignName}" updated description`,
+          campaign_id: campaign.id,
+          performed_by: performedBy
+        })
+      }
+      if (body.launchDate !== undefined && normalize(body.launchDate) !== normalize(existingCampaign.launch_date)) {
+        activities.push({
+          type: 'campaign_updated',
+          description: `Campaign "${campaignName}" updated launch date`,
+          campaign_id: campaign.id,
+          performed_by: performedBy
+        })
+      }
+      if (body.endDate !== undefined && normalize(body.endDate) !== normalize(existingCampaign.end_date)) {
+        activities.push({
+          type: 'campaign_updated',
+          description: `Campaign "${campaignName}" updated end date`,
+          campaign_id: campaign.id,
+          performed_by: performedBy
+        })
+      }
+      if (body.budget !== undefined && normalize(body.budget) !== normalize(existingCampaign.budget)) {
+        activities.push({
+          type: 'campaign_updated',
+          description: `Campaign "${campaignName}" updated budget`,
+          campaign_id: campaign.id,
+          performed_by: performedBy
+        })
+      }
+      if (body.goals !== undefined && JSON.stringify(body.goals) !== JSON.stringify(existingCampaign.goals)) {
+        activities.push({
+          type: 'campaign_updated',
+          description: `Campaign "${campaignName}" updated campaign goals`,
+          campaign_id: campaign.id,
+          performed_by: performedBy
+        })
+      }
+      if (body.audience !== undefined && normalize(body.audience) !== normalize(existingCampaign.audience)) {
+        activities.push({
+          type: 'campaign_updated',
+          description: `Campaign "${campaignName}" updated audience`,
+          campaign_id: campaign.id,
+          performed_by: performedBy
+        })
+      }
+      if (body.channels !== undefined && JSON.stringify(body.channels) !== JSON.stringify(existingCampaign.channels)) {
+        activities.push({
+          type: 'campaign_updated',
+          description: `Campaign "${campaignName}" updated channels`,
+          campaign_id: campaign.id,
+          performed_by: performedBy
+        })
+      }
+      if (body.assetIds !== undefined && JSON.stringify(body.assetIds) !== JSON.stringify(existingCampaign.assets)) {
+        activities.push({
+          type: 'campaign_updated',
+          description: `Campaign "${campaignName}" updated assets`,
+          campaign_id: campaign.id,
+          performed_by: performedBy
+        })
+      }
+    }
+
+    // Only insert activities if there were actual changes
+    if (activities.length > 0) {
+      await supabase.from('activities').insert(activities)
+    }
 
     // Fetch full asset details if campaign has assets
     let assets: unknown[] = []

@@ -1,10 +1,28 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { currentUser } from '@clerk/nextjs/server'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+async function getCurrentUserName() {
+  try {
+    const user = await currentUser()
+    if (user) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('name, email')
+        .eq('id', user.id)
+        .single()
+      return userData?.name || userData?.email || user.emailAddresses?.[0]?.emailAddress || 'System'
+    }
+    return 'System'
+  } catch {
+    return 'System'
+  }
+}
 
 export async function GET(request: Request) {
   try {
@@ -65,6 +83,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
+    const performedBy = await getCurrentUserName()
 
     const { data: asset, error } = await supabase
       .from('assets')
@@ -89,6 +108,14 @@ export async function POST(request: Request) {
         { status: 500 }
       )
     }
+
+    // Log activity
+    await supabase.from('activities').insert({
+      type: 'asset_created',
+      description: `Asset "${asset.name}" was created`,
+      asset_id: asset.id,
+      performed_by: performedBy
+    })
 
     // Transform to camelCase
     const transformedAsset = {
