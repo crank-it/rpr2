@@ -389,10 +389,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               })}
             </div>
 
-            <div className="space-y-1">
+            <div className="border-t border-slate-300 space-y-1">
               {secondaryNavigation.map((item) => {
                 const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
-                const showPendingDot = item.name === 'User Management' && pendingUsersCount > 0
+                const showPendingDot = item.name === 'User Management' && pendingUsersCount > 0 
                 return (
                   <Link
                     key={item.name}
