@@ -51,7 +51,7 @@ const navigation = [
 ]
 
 const secondaryNavigation = [
-  { name: 'Settings', href: '/settings', icon: Settings },
+  // { name: 'Settings', href: '/settings', icon: Settings }, // Temporarily hidden
   { name: 'User Management', href: '/user-management', icon: UserCog },
 ]
 
@@ -356,8 +356,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <UserSyncProvider>
       <div className="flex h-screen bg-gray-50">
         {/* Sidebar */}
-        <aside className="hidden lg:flex lg:w-64 lg:flex-col border-r bg-white">
-          <div className="flex h-16 items-center gap-3 border-b px-6">
+        <aside className="hidden lg:flex lg:w-64 lg:flex-col border-r border-slate-300 bg-white">
+          <div className="flex h-16 items-center gap-3 px-6">
             <div className="flex flex-col">
               <div className="text-xl font-light tracking-wider text-gray-900" style={{ letterSpacing: '0.1em' }}>
                 RPR HAIRCARE
@@ -442,7 +442,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Main Content */}
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Header */}
-          <header className="flex h-16 items-center gap-4 border-b bg-white px-6">
+          <header className="flex h-16 items-center gap-4 border-b border-slate-300 bg-white px-6">
             <Button variant="ghost" size="icon" className="lg:hidden">
               <Menu className="h-5 w-5" />
             </Button>

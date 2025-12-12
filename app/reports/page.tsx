@@ -1,7 +1,7 @@
 'use client'
 
 import { TrendingUp, BarChart3, LineChart, Calendar, Download, LayoutDashboard } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -12,6 +12,8 @@ interface Campaign {
   status: string
   progress: number
   budget: number | null
+  createdAt?: string
+  launchDate?: string
 }
 
 interface ReportData {
@@ -25,8 +27,55 @@ interface ReportData {
 
 export default function ReportsPage() {
   const [timeframe, setTimeframe] = useState('30d')
-  const [data, setData] = useState<ReportData | null>(null)
+  const [allCampaigns, setAllCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Calculate date range based on timeframe
+  const getDateRange = useCallback((tf: string) => {
+    const now = new Date()
+    const startDate = new Date()
+
+    switch (tf) {
+      case '7d':
+        startDate.setDate(now.getDate() - 7)
+        break
+      case '30d':
+        startDate.setDate(now.getDate() - 30)
+        break
+      case '90d':
+        startDate.setDate(now.getDate() - 90)
+        break
+      case '12m':
+        startDate.setFullYear(now.getFullYear() - 1)
+        break
+      default:
+        startDate.setDate(now.getDate() - 30)
+    }
+
+    return startDate
+  }, [])
+
+  // Filter campaigns based on timeframe
+  const filteredData = useMemo(() => {
+    const startDate = getDateRange(timeframe)
+
+    const filtered = allCampaigns.filter((campaign) => {
+      const campaignDate = new Date(campaign.launchDate || campaign.createdAt || Date.now())
+      return campaignDate >= startDate
+    })
+
+    const activeCampaigns = filtered.filter((c) => c.status?.toLowerCase() === 'active')
+    const totalBudget = filtered.reduce((sum, c) => sum + (c.budget || 0), 0)
+
+    return {
+      campaigns: filtered,
+      stats: {
+        totalCampaigns: filtered.length,
+        activeCampaigns: activeCampaigns.length,
+        totalBudget
+      }
+    }
+  }, [allCampaigns, timeframe, getDateRange])
 
   useEffect(() => {
     fetchReportData()
@@ -37,18 +86,7 @@ export default function ReportsPage() {
       const response = await fetch('/api/campaigns')
       if (response.ok) {
         const campaigns = await response.json()
-
-        const activeCampaigns = campaigns.filter((c: Campaign) => c.status?.toLowerCase() === 'active')
-        const totalBudget = campaigns.reduce((sum: number, c: Campaign) => sum + (c.budget || 0), 0)
-
-        setData({
-          campaigns,
-          stats: {
-            totalCampaigns: campaigns.length,
-            activeCampaigns: activeCampaigns.length,
-            totalBudget
-          }
-        })
+        setAllCampaigns(campaigns)
       }
     } catch (error) {
       console.error('Failed to fetch report data:', error)
@@ -65,7 +103,7 @@ export default function ReportsPage() {
     )
   }
 
-  const hasData = data && data.campaigns.length > 0
+  const hasData = filteredData && filteredData.campaigns.length > 0
 
   return (
     <div className="space-y-6">
@@ -88,10 +126,10 @@ export default function ReportsPage() {
             <option value="90d">Last 90 days</option>
             <option value="12m">Last 12 months</option>
           </select>
-          <Button variant="outline" disabled={!hasData}>
+          {/* <Button variant="outline" disabled={!hasData}>
             <Download className="mr-2 h-4 w-4" />
             Export
-          </Button>
+          </Button> */}
         </div>
       </div>
 
@@ -102,7 +140,7 @@ export default function ReportsPage() {
             <div className="flex items-start justify-between">
               <div className="space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">Total Campaigns</p>
-                <p className="text-2xl font-semibold">{data?.stats.totalCampaigns ?? 0}</p>
+                <p className="text-2xl font-semibold">{filteredData?.stats.totalCampaigns ?? 0}</p>
               </div>
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100">
                 <Calendar className="h-6 w-6 text-gray-600" />
@@ -115,7 +153,7 @@ export default function ReportsPage() {
             <div className="flex items-start justify-between">
               <div className="space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">Active Campaigns</p>
-                <p className="text-2xl font-semibold">{data?.stats.activeCampaigns ?? 0}</p>
+                <p className="text-2xl font-semibold">{filteredData?.stats.activeCampaigns ?? 0}</p>
               </div>
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100">
                 <TrendingUp className="h-6 w-6 text-gray-600" />
@@ -129,7 +167,7 @@ export default function ReportsPage() {
               <div className="space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">Total Budget</p>
                 <p className="text-2xl font-semibold">
-                  {data?.stats.totalBudget ? `$${data.stats.totalBudget.toLocaleString()}` : '$0'}
+                  {filteredData?.stats.totalBudget ? `$${filteredData.stats.totalBudget.toLocaleString()}` : '$0'}
                 </p>
               </div>
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100">
@@ -223,7 +261,7 @@ export default function ReportsPage() {
           <CardContent>
             {hasData ? (
               <div className="space-y-4">
-                {data.campaigns.slice(0, 5).map((campaign) => (
+                {filteredData.campaigns.slice(0, 5).map((campaign) => (
                   <div key={campaign.id} className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2">
