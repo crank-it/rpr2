@@ -37,10 +37,27 @@ export default function ActivityFeedPage() {
   const [loadingReplies, setLoadingReplies] = useState<Set<string>>(new Set())
   const [replyText, setReplyText] = useState<Record<string, string>>({})
   const [submittingReply, setSubmittingReply] = useState<string | null>(null)
+  const [userName, setUserName] = useState<string>('')
 
   useEffect(() => {
     fetchActivityData()
+    fetchCurrentUser()
   }, [])
+
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await fetch('/api/users/me')
+      if (response.ok) {
+        const user = await response.json()
+        // Extract first name from full name
+        const firstName = user.name?.split(' ')[0] || 'there'
+        setUserName(firstName)
+      }
+    } catch (error) {
+      console.error('Failed to fetch current user:', error)
+      setUserName('there')
+    }
+  }
 
   const fetchActivityData = async () => {
     try {
@@ -194,7 +211,7 @@ export default function ActivityFeedPage() {
             Activity Feed
           </h1>
           <p className="text-sm text-muted-foreground">
-            Recent activity and conversations
+            {userName ? `Here's what you've missed, ${userName}` : 'Recent activity and conversations'}
           </p>
         </div>
 
