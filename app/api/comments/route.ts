@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { currentUser } from '@clerk/nextjs/server'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -140,6 +141,64 @@ export async function POST(request: Request) {
     console.error('Failed to create comment:', error)
     return NextResponse.json(
       { error: 'Failed to create comment' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const user = await currentUser()
+    const { searchParams } = new URL(request.url)
+    const commentId = searchParams.get('commentId')
+
+    if (!commentId) {
+      return NextResponse.json(
+        { error: 'commentId is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Check if user is admin
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (!userData || !['admin', 'superadmin'].includes(userData.role)) {
+      return NextResponse.json(
+        { error: 'Unauthorized - admin access required' },
+        { status: 403 }
+      )
+    }
+
+    // Soft delete by setting deleted_at
+    const { error } = await supabase
+      .from('comments')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', commentId)
+
+    if (error) {
+      console.error('Failed to delete comment:', error)
+      return NextResponse.json(
+        { error: 'Failed to delete comment' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Failed to delete comment:', error)
+    return NextResponse.json(
+      { error: 'Failed to delete comment' },
       { status: 500 }
     )
   }

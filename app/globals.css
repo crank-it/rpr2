@@ -1,117 +1,381 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #0a0a0a;
-  --muted: #f5f5f5;
-  --muted-foreground: #737373;
-  --border: #e5e5e5;
-  --input: #e5e5e5;
-  --ring: #0d9488;
-  --radius: 0.5rem;
-  --accent: #0d9488;
-  --accent-muted: #5eead4;
+@theme {
+	/* Pink color palette - Luxury aesthetic */
+	--color-primary: #d6b2b8;
+	--color-primary-foreground: #ffffff;
+
+	/* Backgrounds */
+	--color-background: hsl(0 0% 98%);
+	--color-foreground: hsl(0 0% 10%);
+
+	/* Cards & Surfaces */
+	--color-card: hsl(0 0% 100%);
+	--color-card-foreground: hsl(0 0% 10%);
+	--color-popover: hsl(0 0% 100%);
+	--color-popover-foreground: hsl(0 0% 10%);
+
+	/* Secondary - Light grey for subtle elements */
+	--color-secondary: hsl(0 0% 96%);
+	--color-secondary-foreground: hsl(0 0% 10%);
+
+	/* Accent */
+	--color-accent: #d6b2b8;
+	--color-accent-foreground: #ffffff;
+
+	/* Muted */
+	--color-muted: hsl(0 0% 96%);
+	--color-muted-foreground: hsl(0 0% 45%);
+
+	/* Status */
+	--color-destructive: hsl(0 72% 51%);
+	--color-destructive-foreground: #ffffff;
+
+	/* Borders & Inputs */
+	--color-border: hsl(0 0% 90%);
+	--color-input: hsl(0 0% 90%);
+	--color-ring: #f78dd0;
+
+	/* Border radius */
+	--radius-sm: 0.5rem;
+	--radius: 0.75rem;
+	--radius-md: 0.75rem;
+	--radius-lg: 1rem;
+	--radius-xl: 1.25rem;
+	--radius-2xl: 1.5rem;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-accent: var(--accent);
-  --color-accent-muted: var(--accent-muted);
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+/* ========================================
+   RPR FLOW - LUXURY DESIGN SYSTEM
+   Pink Palette: #f78dd0 (bright) + #d7b1b8 (soft) + Black/White
+   Elegant, Clean, Sophisticated
+   ======================================== */
+
+@layer base {
+	:root {
+		/* ===== RPR FLOW - Light Mode ===== */
+
+		/* Base */
+		--background: 0 0% 98%;              /* Off-white page background */
+		--foreground: 0 0% 10%;              /* Near black text */
+
+		/* Cards & Surfaces */
+		--card: 0 0% 100%;                   /* Pure white cards */
+		--card-foreground: 0 0% 10%;
+		--popover: 0 0% 100%;
+		--popover-foreground: 0 0% 10%;
+
+		/* Primary: Dusty Rose Pink */
+		--primary: 349 26% 77%;              /* #d6b2b8 - dusty rose */
+		--primary-foreground: 0 0% 100%;     /* White text on pink */
+
+		/* Secondary: Light grey */
+		--secondary: 0 0% 96%;
+		--secondary-foreground: 0 0% 10%;
+
+		/* Accent: Dusty Rose Pink */
+		--accent: 349 26% 77%;
+		--accent-foreground: 0 0% 100%;
+
+		/* Muted: Grey tones */
+		--muted: 0 0% 96%;
+		--muted-foreground: 0 0% 45%;
+
+		/* Status colors */
+		--destructive: 0 72% 51%;
+		--destructive-foreground: 0 0% 100%;
+		--success: 349 26% 77%;              /* Use pink for success */
+		--success-foreground: 0 0% 100%;
+		--warning: 45 93% 47%;
+		--warning-foreground: 0 0% 10%;
+
+		/* Borders & Inputs */
+		--border: 0 0% 90%;
+		--input: 0 0% 90%;
+		--ring: 349 26% 77%;                 /* Pink focus ring */
+
+		/* Border radius */
+		--radius: 0.75rem;
+
+		/* Shadows */
+		--shadow-color: 0 0% 0%;
+	}
+
+	.dark {
+		/* ===== RPR FLOW - Dark Mode ===== */
+
+		/* Base */
+		--background: 0 0% 8%;
+		--foreground: 0 0% 90%;
+
+		/* Cards & Surfaces */
+		--card: 0 0% 12%;
+		--card-foreground: 0 0% 90%;
+		--popover: 0 0% 12%;
+		--popover-foreground: 0 0% 90%;
+
+		/* Primary: Dusty Rose Pink (lighter for dark mode) */
+		--primary: 349 26% 80%;
+		--primary-foreground: 0 0% 8%;
+
+		/* Secondary */
+		--secondary: 0 0% 18%;
+		--secondary-foreground: 0 0% 90%;
+
+		/* Accent */
+		--accent: 349 26% 80%;
+		--accent-foreground: 0 0% 8%;
+
+		/* Muted */
+		--muted: 0 0% 15%;
+		--muted-foreground: 0 0% 55%;
+
+		/* Status colors */
+		--destructive: 0 62% 50%;
+		--destructive-foreground: 0 0% 100%;
+		--success: 349 26% 80%;
+		--success-foreground: 0 0% 8%;
+		--warning: 45 88% 52%;
+		--warning-foreground: 0 0% 8%;
+
+		/* Borders & Inputs */
+		--border: 0 0% 20%;
+		--input: 0 0% 20%;
+		--ring: 349 26% 80%;
+
+		/* Shadows */
+		--shadow-color: 0 0% 0%;
+	}
 }
 
-/* Dark mode disabled - app uses light theme only */
+@layer base {
+	* {
+		border-color: hsl(var(--border));
+	}
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+	body {
+		background-color: hsl(var(--background));
+		color: hsl(var(--foreground));
+		font-feature-settings: "cv11", "ss01";
+		font-synthesis-weight: none;
+		text-rendering: optimizeLegibility;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+
+	html {
+		scroll-behavior: smooth;
+	}
+
+	/* Custom scrollbar */
+	::-webkit-scrollbar {
+		width: 6px;
+		height: 6px;
+	}
+
+	::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
+	::-webkit-scrollbar-thumb {
+		background: hsl(var(--muted-foreground) / 0.2);
+		border-radius: 3px;
+	}
+
+	::-webkit-scrollbar-thumb:hover {
+		background: hsl(var(--muted-foreground) / 0.4);
+	}
+
+	/* Hide scrollbar for mobile */
+	@media (max-width: 768px) {
+		::-webkit-scrollbar {
+			width: 0;
+			height: 0;
+		}
+	}
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-weight: 600;
-  letter-spacing: -0.025em;
+@layer components {
+	/* ===== SHADOW SYSTEM ===== */
+	.shadow-soft-xs {
+		box-shadow: 0 1px 2px 0 hsl(var(--shadow-color) / 0.04);
+	}
+
+	.shadow-soft-sm {
+		box-shadow: 0 2px 4px 0 hsl(var(--shadow-color) / 0.06),
+			0 1px 2px -1px hsl(var(--shadow-color) / 0.06);
+	}
+
+	.shadow-soft-md {
+		box-shadow: 0 4px 8px -2px hsl(var(--shadow-color) / 0.08),
+			0 2px 4px -2px hsl(var(--shadow-color) / 0.06);
+	}
+
+	.shadow-soft-lg {
+		box-shadow: 0 12px 20px -4px hsl(var(--shadow-color) / 0.1),
+			0 4px 8px -4px hsl(var(--shadow-color) / 0.08);
+	}
+
+	.shadow-soft-xl {
+		box-shadow: 0 24px 32px -8px hsl(var(--shadow-color) / 0.12),
+			0 8px 16px -6px hsl(var(--shadow-color) / 0.08);
+	}
+
+	/* ===== TRANSITIONS ===== */
+	.transition-smooth {
+		transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+	}
+
+	.transition-spring {
+		transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+	}
+
+	/* ===== ANIMATIONS ===== */
+	@keyframes float {
+		0%, 100% { transform: translateY(0); }
+		50% { transform: translateY(-8px); }
+	}
+
+	@keyframes fade-in-up {
+		from {
+			opacity: 0;
+			transform: translateY(16px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	@keyframes scale-in {
+		from {
+			opacity: 0;
+			transform: scale(0.96);
+		}
+		to {
+			opacity: 1;
+			transform: scale(1);
+		}
+	}
+
+	@keyframes slide-in-right {
+		from {
+			opacity: 0;
+			transform: translateX(16px);
+		}
+		to {
+			opacity: 1;
+			transform: translateX(0);
+		}
+	}
+
+	.animate-float {
+		animation: float 3s ease-in-out infinite;
+	}
+
+	.animate-fade-in-up {
+		animation: fade-in-up 0.4s ease-out forwards;
+	}
+
+	.animate-scale-in {
+		animation: scale-in 0.25s ease-out forwards;
+	}
+
+	.animate-slide-in-right {
+		animation: slide-in-right 0.3s ease-out forwards;
+	}
+
+	/* ===== CARD STYLES ===== */
+	.card-minimal {
+		position: relative;
+		overflow: hidden;
+		border-radius: 1rem;
+		border: 1px solid hsl(var(--border));
+		background: hsl(var(--card));
+		box-shadow: 0 2px 4px 0 hsl(var(--shadow-color) / 0.06), 0 1px 2px -1px hsl(var(--shadow-color) / 0.06);
+		transition: all 0.2s ease;
+	}
+
+	.card-minimal:hover {
+		box-shadow: 0 4px 8px -2px hsl(var(--shadow-color) / 0.08), 0 2px 4px -2px hsl(var(--shadow-color) / 0.06);
+	}
+
+	.card-highlight {
+		position: relative;
+		overflow: hidden;
+		border-radius: 1rem;
+		border: 1px solid hsl(var(--primary) / 0.2);
+		background: hsl(var(--card));
+		box-shadow: 0 4px 8px -2px hsl(var(--shadow-color) / 0.08), 0 2px 4px -2px hsl(var(--shadow-color) / 0.06);
+	}
+
+	/* ===== BUTTON STYLES ===== */
+	.btn-primary {
+		position: relative;
+		overflow: hidden;
+		border-radius: 0.75rem;
+		font-weight: 500;
+		transition: all 0.2s ease;
+		background: hsl(var(--primary));
+		color: hsl(var(--primary-foreground));
+	}
+
+	.btn-primary:hover {
+		box-shadow: 0 12px 20px -4px hsl(var(--shadow-color) / 0.1), 0 4px 8px -4px hsl(var(--shadow-color) / 0.08);
+		transform: translateY(-1px);
+		filter: brightness(1.05);
+	}
+
+	/* ===== INPUT STYLES ===== */
+	.input-minimal {
+		border-radius: 0.75rem;
+		border: 1px solid hsl(var(--border));
+		background: hsl(var(--background));
+		transition: all 0.2s ease;
+	}
+
+	.input-minimal:focus {
+		border-color: hsl(var(--primary));
+		box-shadow: 0 0 0 1px hsl(var(--primary) / 0.15);
+	}
+
+	/* ===== GLASS MORPHISM ===== */
+	.glass {
+		background: hsl(var(--card) / 0.85);
+		backdrop-filter: blur(16px);
+		-webkit-backdrop-filter: blur(16px);
+	}
+
+	/* ===== FOCUS STYLES ===== */
+	.focus-ring:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--primary));
+	}
+
+	/* ===== RESPONSIVE UTILITIES ===== */
+	@media (max-width: 768px) {
+		.mobile-full-width {
+			margin-left: -1rem;
+			margin-right: -1rem;
+			width: calc(100% + 2rem);
+			border-radius: 0;
+		}
+
+		.mobile-padding {
+			padding-left: 1rem;
+			padding-right: 1rem;
+		}
+	}
 }
 
-/* Modern Minimal Utilities */
-.page-container {
-  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8;
+/* ===== PRINT STYLES ===== */
+@media print {
+	.no-print {
+		display: none !important;
+	}
 }
 
-.section-heading {
-  @apply text-2xl font-semibold tracking-tight text-gray-900 mb-6;
-}
-
-.text-muted {
-  @apply text-gray-500;
-}
-
-.card-hover {
-  @apply transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5;
-}
-
-/* Focus visible styles */
-*:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
-
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #d4d4d4;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #a3a3a3;
-}
-
-/* Form Input Styles */
-.luxury-input {
-  @apply w-full px-4 py-3 text-sm bg-white text-gray-900 border border-gray-200 rounded-lg;
-  @apply transition-all duration-200;
-  @apply placeholder:text-gray-400;
-  @apply focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500;
-  @apply hover:border-gray-300;
-  @apply disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed;
-}
-
-.luxury-input:read-only {
-  @apply bg-gray-50 cursor-default;
-}
-
-/* Select specific styling */
-select.luxury-input {
-  @apply appearance-none bg-no-repeat;
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-  background-position: right 0.75rem center;
-  background-size: 1.25rem 1.25rem;
-  padding-right: 2.5rem;
-}
-
-/* Date input styling */
-input[type="date"].luxury-input {
-  @apply cursor-pointer;
-}
-
-input[type="date"].luxury-input::-webkit-calendar-picker-indicator {
-  @apply cursor-pointer opacity-60 hover:opacity-100;
+/* ===== SCROLL AREA ===== */
+[data-radix-scroll-area-viewport] > *:first-child {
+	display: block !important;
 }

@@ -22,16 +22,27 @@ export interface Customer {
   updated_at: string
 }
 
+export interface ProjectAsset {
+  label: string
+  url: string
+}
+
 export interface Project {
   id: string
   name: string
   description: string | null
-  status: 'DRAFT' | 'IN_PROGRESS' | 'REVIEW' | 'APPROVED' | 'COMPLETED'
-  priority: 'LOW' | 'MEDIUM' | 'HIGH'
+  status: 'DRAFT' | 'START' | 'IN_PROGRESS' | 'REVIEW' | 'APPROVED' | 'COMPLETED'
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
   customer_id: string | null
   due_date: string | null
+  owner: string | null
+  assignees: string[] // User IDs
+  category_ids: string[] // Category IDs
+  assets: ProjectAsset[]
+  customFieldValues: Record<string, string | string[]>
   created_at: string
   updated_at: string
+  completed_at: string | null
 }
 
 export interface Campaign {
@@ -70,12 +81,13 @@ export interface Asset {
 export interface Comment {
   id: string
   content: string
-  entity_type: 'CUSTOMER' | 'PROJECT' | 'CAMPAIGN' | 'ASSET'
+  entity_type: 'CUSTOMER' | 'PROJECT' | 'CAMPAIGN' | 'ASSET' | 'TASK'
   entity_id: string
   author_id: string | null
   author_name: string
   created_at: string
   updated_at: string
+  deleted_at: string | null
 }
 
 export interface User {
@@ -89,4 +101,51 @@ export interface User {
   approved_at: string | null
   created_at: string
   updated_at: string | null
+}
+
+export interface CustomFieldDefinition {
+  id: string
+  name: string
+  type: 'text' | 'textarea' | 'url' | 'date' | 'user' | 'number' | 'checkbox' | 'email' | 'dropdown' | 'multiselect'
+  options?: string[] // Only for dropdown and multiselect
+  required: boolean
+  sortOrder: number
+}
+
+export interface ProjectCategory {
+  id: string
+  name: string
+  description: string | null
+  color: string
+  customFields: CustomFieldDefinition[]
+  created_at: string
+  updated_at: string
+}
+
+export interface TaskTemplate {
+  id: string
+  category_id: string
+  title: string
+  details: string | null
+  assignee_ids: string[]
+  target_days_offset: number
+  status: string
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface Task {
+  id: string
+  project_id: string
+  title: string
+  details: string | null
+  attachment: string | null
+  assignee_ids: string[]
+  target_date: string | null
+  status: 'DRAFT' | 'IN_PROGRESS' | 'REVIEW' | 'APPROVED' | 'COMPLETED'
+  created_at: string
+  updated_at: string
+  completed_at: string | null
+  created_from_template_id: string | null
 }

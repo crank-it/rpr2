@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Send, MessageCircle, Loader2 } from 'lucide-react'
+import { Send, MessageCircle, Loader2, Trash2 } from 'lucide-react'
 import { useUser } from '@clerk/nextjs'
 
 interface Comment {
@@ -72,9 +72,29 @@ export function CommentThread({ entityType, entityId }: CommentThreadProps) {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [newComment, setNewComment] = useState('')
+  const [userRole, setUserRole] = useState<string>('')
 
   // Get current user's display name
   const currentUserName = user?.fullName || user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || 'Unknown'
+  const isAdmin = userRole === 'admin' || userRole === 'superadmin'
+
+  useEffect(() => {
+    async function fetchUserRole() {
+      try {
+        const response = await fetch('/api/users/me')
+        if (response.ok) {
+          const data = await response.json()
+          setUserRole(data.role || '')
+        }
+      } catch (error) {
+        console.error('Failed to fetch user role:', error)
+      }
+    }
+
+    if (user) {
+      fetchUserRole()
+    }
+  }, [user])
 
   useEffect(() => {
     async function fetchComments() {
@@ -142,73 +162,84 @@ export function CommentThread({ entityType, entityId }: CommentThreadProps) {
     }))
   }
 
-  return (
-    <div className="luxury-card">
-      <div className="px-8 py-6 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">Discussion</h3>
-        <p className="text-sm text-gray-500 mt-1">
-          {comments.length} {comments.length === 1 ? 'comment' : 'comments'}
-        </p>
-      </div>
+  const handleDeleteComment = async (commentId: string) => {
+    if (!confirm('Are you sure you want to delete this comment? This action cannot be undone.')) {
+      return
+    }
 
-      <div className="max-h-[500px] overflow-y-auto">
-        {loading ? (
-          <div className="px-8 py-16 text-center">
-            <Loader2 className="h-8 w-8 mx-auto animate-spin text-gray-400" />
-            <p className="text-sm text-gray-500 mt-2">Loading comments...</p>
-          </div>
-        ) : comments.length === 0 ? (
-          <div className="px-8 py-16 text-center text-gray-500">
-            <MessageCircle className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p className="text-sm">No comments yet. Start the conversation!</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-100">
-            {comments.map((comment) => (
+    try {
+      const response = await fetch(`/api/comments?commentId=${commentId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        // Remove comment from UI
+        setComments(comments.filter(c => c.id !== commentId).map(comment => ({
+          ...comment,
+          replies: comment.replies?.filter(r => r.id !== commentId) || []
+        })))
+      } else {
+        alert('Failed to delete comment')
+      }
+    } catch (error) {
+      console.error('Failed to delete comment:', error)
+      alert('Failed to delete comment')
+    }
+  }
+
+  return (
+    <div>
+      <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-8">
+        Discussion
+      </h2>
+
+      {loading ? (
+        <div className="text-center py-16">
+          <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-foreground border-r-transparent"></div>
+        </div>
+      ) : comments.length === 0 ? (
+        <div className="text-center py-8 mb-8">
+          <p className="text-sm text-muted-foreground">No comments yet</p>
+        </div>
+      ) : (
+        <div className="space-y-0 mb-8">
+          {comments.map((comment, index) => (
+            <div key={comment.id}>
               <CommentItem
-                key={comment.id}
                 comment={comment}
                 entityType={entityType}
                 entityId={entityId}
                 onReplyAdded={handleAddReply}
                 currentUserName={currentUserName}
+                isAdmin={isAdmin}
+                onDelete={handleDeleteComment}
               />
-            ))}
-          </div>
-        )}
-      </div>
+              {index < comments.length - 1 && <div className="h-px bg-border" />}
+            </div>
+          ))}
+        </div>
+      )}
 
-      <form onSubmit={handleSubmit} className="border-t border-gray-200 p-6">
-        <div className="space-y-4">
-          <textarea
+      <form onSubmit={handleSubmit}>
+        <div className="relative">
+          <input
+            type="text"
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="Add a comment..."
-            className="w-full min-h-24 p-4 border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[rgb(247,141,208)]/20 focus:border-[rgb(247,141,208)]"
+            className="w-full border-0 border-b border-border bg-transparent py-3 pr-12 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors"
           />
-
-          <div className="flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => setNewComment('')}
-              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
-              disabled={!newComment}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={!newComment.trim() || submitting}
-              className="flex items-center gap-2 px-6 py-2 bg-[rgb(247,141,208)] text-white rounded-lg hover:bg-[rgb(215,177,184)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {submitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-              {submitting ? 'Posting...' : 'Comment'}
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={!newComment.trim() || submitting}
+            className="absolute right-0 top-1/2 -translate-y-1/2 text-primary hover:text-primary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {submitting ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Send className="h-5 w-5" />
+            )}
+          </button>
         </div>
       </form>
     </div>
@@ -222,9 +253,11 @@ interface CommentItemProps {
   onReplyAdded: (parentId: string, reply: Comment) => void
   isReply?: boolean
   currentUserName: string
+  isAdmin?: boolean
+  onDelete?: (commentId: string) => void
 }
 
-function CommentItem({ comment, entityType, entityId, onReplyAdded, isReply = false, currentUserName }: CommentItemProps) {
+function CommentItem({ comment, entityType, entityId, onReplyAdded, isReply = false, currentUserName, isAdmin = false, onDelete }: CommentItemProps) {
   const [showReply, setShowReply] = useState(false)
   const [replyContent, setReplyContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -260,87 +293,92 @@ function CommentItem({ comment, entityType, entityId, onReplyAdded, isReply = fa
   }
 
   return (
-    <div className={isReply ? "py-4" : "px-8 py-6"}>
-      <div className="flex items-start gap-4">
-        <div className="flex-shrink-0">
-          <div className={`${isReply ? 'h-8 w-8' : 'h-10 w-10'} rounded-full bg-gradient-to-br from-[rgb(247,141,208)] to-[rgb(215,177,184)] flex items-center justify-center text-white font-semibold text-sm`}>
-            {comment.author.charAt(0)}
-          </div>
-        </div>
-
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="font-medium text-gray-900">{comment.author}</span>
+    <div className={isReply ? "py-4 pl-8" : "py-6"}>
+      <div className="flex items-baseline justify-between gap-8 mb-1">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-base font-medium text-foreground mb-1">
+            {comment.author}
+          </h3>
+          <p className="text-sm text-foreground mb-2">{comment.content}</p>
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <RelativeTime timestamp={comment.timestamp} />
+            {!isReply && (
+              <>
+                <span>·</span>
+                <button
+                  onClick={() => setShowReply(!showReply)}
+                  className="text-primary hover:text-primary/80 transition-colors"
+                >
+                  Reply
+                </button>
+              </>
+            )}
+            {isAdmin && onDelete && (
+              <>
+                <span>·</span>
+                <button
+                  onClick={() => onDelete(comment.id)}
+                  className="text-destructive hover:text-destructive/80 transition-colors"
+                >
+                  Delete
+                </button>
+              </>
+            )}
           </div>
-
-          <p className="text-gray-700 mb-3">{comment.content}</p>
-
-          {!isReply && (
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setShowReply(!showReply)}
-                className="text-sm text-gray-500 hover:text-[rgb(247,141,208)] transition-colors"
-              >
-                Reply
-              </button>
-            </div>
-          )}
-
-          {/* Replies */}
-          {comment.replies && comment.replies.length > 0 && (
-            <div className="mt-6 space-y-2 pl-6 border-l-2 border-gray-100">
-              {comment.replies.map((reply) => (
-                <CommentItem
-                  key={reply.id}
-                  comment={reply}
-                  entityType={entityType}
-                  entityId={entityId}
-                  onReplyAdded={onReplyAdded}
-                  isReply={true}
-                  currentUserName={currentUserName}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Reply Form */}
-          {showReply && (
-            <div className="mt-4">
-              <textarea
-                value={replyContent}
-                onChange={(e) => setReplyContent(e.target.value)}
-                placeholder="Write a reply..."
-                className="w-full p-3 border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[rgb(247,141,208)]/20 focus:border-[rgb(247,141,208)]"
-                rows={3}
-              />
-              <div className="flex justify-end gap-2 mt-2">
-                <button
-                  onClick={() => {
-                    setShowReply(false)
-                    setReplyContent('')
-                  }}
-                  className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSubmitReply}
-                  disabled={!replyContent.trim() || submitting}
-                  className="flex items-center gap-2 px-4 py-2 text-sm bg-[rgb(247,141,208)] text-white rounded-lg hover:bg-[rgb(215,177,184)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {submitting ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <Send className="h-3 w-3" />
-                  )}
-                  {submitting ? 'Sending...' : 'Reply'}
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
+
+      {/* Reply Form */}
+      {showReply && (
+        <div className="mt-4 relative">
+          <input
+            type="text"
+            value={replyContent}
+            onChange={(e) => setReplyContent(e.target.value)}
+            placeholder="Write a reply..."
+            className="w-full border-0 border-b border-border bg-transparent py-3 pr-24 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors"
+          />
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-3">
+            <button
+              onClick={() => {
+                setShowReply(false)
+                setReplyContent('')
+              }}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmitReply}
+              disabled={!replyContent.trim() || submitting}
+              className="text-sm text-primary hover:text-primary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {submitting ? 'Sending...' : 'Reply'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Replies */}
+      {comment.replies && comment.replies.length > 0 && (
+        <div className="mt-6 space-y-0 border-l border-border pl-0">
+          {comment.replies.map((reply, index) => (
+            <div key={reply.id}>
+              <CommentItem
+                comment={reply}
+                entityType={entityType}
+                entityId={entityId}
+                onReplyAdded={onReplyAdded}
+                isReply={true}
+                currentUserName={currentUserName}
+                isAdmin={isAdmin}
+                onDelete={onDelete}
+              />
+              {index < comment.replies.length - 1 && <div className="h-px bg-border ml-8" />}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

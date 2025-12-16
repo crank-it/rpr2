@@ -1,22 +1,10 @@
 'use client'
 
-import { Plus, Search, Filter, FolderOpen, Calendar, Pencil, Trash2 } from 'lucide-react'
-import { useState, useEffect, useRef } from 'react'
+import { Plus, Search } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import { CreateProjectModal } from '@/components/projects/CreateProjectModal'
 import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 
 interface Project {
   id: string
@@ -39,40 +27,12 @@ interface Customer {
   name: string
 }
 
-const getStatusVariant = (status: string) => {
-  const variants: Record<string, 'default' | 'secondary' | 'success' | 'warning'> = {
-    'IN_PROGRESS': 'default',
-    'REVIEW': 'warning',
-    'APPROVED': 'success',
-    'DRAFT': 'secondary',
-    'COMPLETED': 'success'
-  }
-  return variants[status] || 'secondary'
-}
-
-const getPriorityVariant = (priority: string) => {
-  const variants: Record<string, 'destructive' | 'warning' | 'secondary'> = {
-    'URGENT': 'destructive',
-    'HIGH': 'destructive',
-    'MEDIUM': 'warning',
-    'LOW': 'secondary'
-  }
-  return variants[priority] || 'secondary'
-}
-
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-  const [showFilters, setShowFilters] = useState(false)
-  const [statusFilter, setStatusFilter] = useState<string>('')
-  const [priorityFilter, setPriorityFilter] = useState<string>('')
-  const [editingProject, setEditingProject] = useState<Project | null>(null)
-  const [deleteProject, setDeleteProject] = useState<Project | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const filterRef = useRef<HTMLDivElement>(null)
 
   const fetchData = async () => {
     setLoading(true)
@@ -105,17 +65,6 @@ export default function ProjectsPage() {
     fetchData()
   }, [])
 
-  // Close filter dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
-        setShowFilters(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
   const handleProjectCreated = async (newProject: any) => {
     try {
       const response = await fetch('/api/projects', {
@@ -141,63 +90,6 @@ export default function ProjectsPage() {
     setIsCreateModalOpen(false)
   }
 
-  const handleProjectUpdated = async (updatedProject: any) => {
-    if (!editingProject) return
-
-    try {
-      const response = await fetch(`/api/projects/${editingProject.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: updatedProject.title || updatedProject.name,
-          description: updatedProject.description,
-          status: updatedProject.status,
-          priority: updatedProject.priority,
-          dueDate: updatedProject.dueDate || updatedProject.due_date,
-          customerId: updatedProject.customerId || updatedProject.customer_id
-        })
-      })
-      if (!response.ok) {
-        throw new Error('Failed to update project')
-      }
-      const data = await response.json()
-      setProjects(projects.map(p => p.id === editingProject.id ? data : p))
-    } catch (error) {
-      console.error('Error updating project:', error)
-    }
-    setEditingProject(null)
-  }
-
-  const handleEditClick = (project: Project, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setEditingProject(project)
-  }
-
-  const handleDeleteClick = (project: Project, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setDeleteProject(project)
-  }
-
-  const handleDeleteConfirm = async () => {
-    if (!deleteProject) return
-
-    setIsDeleting(true)
-    try {
-      const response = await fetch(`/api/projects/${deleteProject.id}`, {
-        method: 'DELETE'
-      })
-      if (!response.ok) {
-        throw new Error('Failed to delete project')
-      }
-      setProjects(projects.filter(p => p.id !== deleteProject.id))
-    } catch (error) {
-      console.error('Error deleting project:', error)
-    } finally {
-      setIsDeleting(false)
-      setDeleteProject(null)
-    }
-  }
-
   const getCustomerName = (project: Project) => {
     if (project.customer?.name) return project.customer.name
     if (!project.customerId) return null
@@ -208,218 +100,111 @@ export default function ProjectsPage() {
   const filteredProjects = projects.filter(project => {
     const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.description?.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = !statusFilter || project.status === statusFilter
-    const matchesPriority = !priorityFilter || project.priority === priorityFilter
-    return matchesSearch && matchesStatus && matchesPriority
+    return matchesSearch
   })
 
-  const clearFilters = () => {
-    setStatusFilter('')
-    setPriorityFilter('')
+  const formatStatus = (status: string) => {
+    return status.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())
   }
 
-  const activeFiltersCount = (statusFilter ? 1 : 0) + (priorityFilter ? 1 : 0)
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Projects</h1>
-          <p className="text-muted-foreground mt-2">
-            Manage your projects and workflows
+    <div className="min-h-screen bg-background">
+      {/* Centered container with max width */}
+      <div className="mx-auto max-w-3xl px-6 py-16">
+
+        {/* Header - Centered */}
+        <div className="text-center mb-12">
+          <h1 className="text-5xl font-normal text-foreground tracking-tight mb-3">
+            Projects
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {filteredProjects.length} {filteredProjects.length === 1 ? 'project' : 'projects'}
           </p>
         </div>
-        <Button onClick={() => setIsCreateModalOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Project
-        </Button>
-      </div>
 
-      {/* Search and Filters */}
-      <Card className="p-4">
-        <div className="flex gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
-            <Input
-              placeholder="Search projects..."
-              className="!pl-10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <div className="relative" ref={filterRef}>
-            <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
-              <Filter className="mr-2 h-4 w-4" />
-              Filters
-              {activeFiltersCount > 0 && (
-                <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
-                  {activeFiltersCount}
-                </span>
-              )}
-            </Button>
-            {showFilters && (
-              <div className="absolute right-0 top-full mt-2 z-50 w-64 rounded-lg border bg-white shadow-lg p-4">
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Status</label>
-                    <select
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="">All Statuses</option>
-                      <option value="DRAFT">Draft</option>
-                      <option value="IN_PROGRESS">In Progress</option>
-                      <option value="REVIEW">Review</option>
-                      <option value="APPROVED">Approved</option>
-                      <option value="COMPLETED">Completed</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Priority</label>
-                    <select
-                      value={priorityFilter}
-                      onChange={(e) => setPriorityFilter(e.target.value)}
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="">All Priorities</option>
-                      <option value="LOW">Low</option>
-                      <option value="MEDIUM">Medium</option>
-                      <option value="HIGH">High</option>
-                      <option value="URGENT">Urgent</option>
-                    </select>
-                  </div>
-                  {activeFiltersCount > 0 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full"
-                      onClick={clearFilters}
-                    >
-                      Clear Filters
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+        {/* Search bar - Minimal */}
+        <div className="relative mb-16">
+          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search"
+            className="w-full border-0 border-b border-border bg-transparent py-3 pl-12 pr-4 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
-      </Card>
 
-      {/* Projects Table */}
-      {loading ? (
-        <Card className="p-12 text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-gray-900 border-r-transparent"></div>
-          <p className="mt-4 text-sm text-muted-foreground">Loading projects...</p>
-        </Card>
-      ) : filteredProjects.length === 0 ? (
-        <Card>
-          <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gray-100 mb-4">
-              <FolderOpen className="h-10 w-10 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-semibold mb-2">
+        {/* Projects List */}
+        {loading ? (
+          <div className="text-center py-16">
+            <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-foreground border-r-transparent"></div>
+          </div>
+        ) : filteredProjects.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="text-muted-foreground mb-8">
               {searchQuery ? 'No projects found' : 'No projects yet'}
-            </h3>
-            <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-              {searchQuery ? 'Try a different search term' : 'Get started by creating your first project.'}
             </p>
             {!searchQuery && (
-              <Button onClick={() => setIsCreateModalOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Your First Project
-              </Button>
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                Create your first project
+              </button>
             )}
           </div>
-        </Card>
-      ) : (
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Project</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Priority</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead className="w-[80px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredProjects.map((project) => {
-                const customerName = getCustomerName(project)
-                return (
-                  <TableRow key={project.id}>
-                    <TableCell>
-                      <Link
-                        href={`/projects/${project.id}`}
-                        className="block hover:underline"
-                      >
-                        <div className="font-medium">{project.title}</div>
-                        {project.description && (
-                          <div className="text-sm text-muted-foreground mt-1 line-clamp-1">
-                            {project.description}
-                          </div>
-                        )}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {customerName ? (
-                          <>
-                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-xs font-medium">
-                              {customerName.charAt(0)}
-                            </div>
-                            <span className="text-sm">{customerName}</span>
-                          </>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">-</span>
-                        )}
+        ) : (
+          <div className="space-y-0">
+            {filteredProjects.map((project, index) => {
+              const customerName = getCustomerName(project)
+
+              return (
+                <div key={project.id}>
+                  <Link
+                    href={`/projects/${project.id}`}
+                    className="block py-8 transition-opacity hover:opacity-60"
+                  >
+                    <div className="flex items-baseline justify-between gap-8">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base font-medium text-foreground mb-1">
+                          {project.title}
+                        </h3>
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                          {customerName && (
+                            <>
+                              <span>{customerName}</span>
+                              <span>·</span>
+                            </>
+                          )}
+                          <span>{formatStatus(project.status)}</span>
+                          {project.dueDate && (
+                            <>
+                              <span>·</span>
+                              <span>{formatDate(project.dueDate)}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusVariant(project.status)}>
-                        {project.status.replace('_', ' ')}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getPriorityVariant(project.priority)}>
-                        {project.priority}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Calendar className="h-3 w-3" />
-                        {project.dueDate ? formatDate(project.dueDate) : '-'}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => handleEditClick(project, e)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => handleDeleteClick(project, e)}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        </Card>
-      )}
+                    </div>
+                  </Link>
+                  {index < filteredProjects.length - 1 && (
+                    <div className="h-px bg-border" />
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Floating action button - bottom right */}
+        <button
+          onClick={() => setIsCreateModalOpen(true)}
+          className="fixed bottom-8 right-8 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-soft-lg hover:shadow-soft-xl transition-all hover:scale-105"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      </div>
 
       <CreateProjectModal
         isOpen={isCreateModalOpen}
@@ -427,51 +212,6 @@ export default function ProjectsPage() {
         onProjectCreated={handleProjectCreated}
         customers={customers}
       />
-
-      {editingProject && (
-        <CreateProjectModal
-          isOpen={!!editingProject}
-          onClose={() => setEditingProject(null)}
-          onProjectCreated={handleProjectUpdated}
-          customers={customers}
-          initialData={editingProject}
-          isEditing={true}
-        />
-      )}
-
-      {/* Delete Confirmation Dialog */}
-      {deleteProject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setDeleteProject(null)}
-          />
-          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl animate-in fade-in zoom-in duration-200">
-            <div className="px-8 py-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Delete Project</h2>
-              <p className="text-gray-600 mb-6">
-                Are you sure you want to delete <span className="font-medium">&quot;{deleteProject.title}&quot;</span>? This action cannot be undone.
-              </p>
-              <div className="flex justify-end gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => setDeleteProject(null)}
-                  disabled={isDeleting}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleDeleteConfirm}
-                  disabled={isDeleting}
-                >
-                  {isDeleting ? 'Deleting...' : 'Delete'}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

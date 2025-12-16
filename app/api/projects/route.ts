@@ -63,6 +63,9 @@ export async function GET(request: Request) {
       customerId: project.customer_id,
       owner: project.owner,
       assignees: project.assignees || [],
+      categoryIds: project.category_ids || [],
+      assets: project.assets || [],
+      customFieldValues: project.custom_field_values || {},
       createdAt: project.created_at,
       updatedAt: project.updated_at,
       completedAt: project.completed_at,
@@ -95,7 +98,10 @@ export async function POST(request: Request) {
         due_date: body.dueDate || null,
         customer_id: body.customerId || null,
         owner: body.owner || 'Team',
-        assignees: body.assignees || []
+        assignees: body.assignees || [],
+        category_ids: body.categoryIds || [],
+        assets: body.assets || [],
+        custom_field_values: body.customFieldValues || {}
       })
       .select()
       .single()
@@ -127,8 +133,28 @@ export async function POST(request: Request) {
       customerId: project.customer_id,
       owner: project.owner,
       assignees: project.assignees || [],
+      categoryIds: project.category_ids || [],
+      assets: project.assets || [],
+      customFieldValues: project.custom_field_values || {},
       createdAt: project.created_at,
       updatedAt: project.updated_at
+    }
+
+    // Auto-create tasks from templates if categories are provided
+    if (body.categoryIds && body.categoryIds.length > 0) {
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/tasks/create-from-templates`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            projectId: project.id,
+            categoryIds: body.categoryIds
+          })
+        })
+      } catch (error) {
+        console.error('Failed to create tasks from templates:', error)
+        // Don't fail the project creation if template tasks fail
+      }
     }
 
     return NextResponse.json(transformedProject)

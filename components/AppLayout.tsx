@@ -8,13 +8,9 @@ import {
   Home,
   FolderOpen,
   Users,
-  Image as ImageIcon,
-  Calendar,
-  BarChart3,
   Menu,
   Settings,
   Bug,
-  GraduationCap,
   LogOut,
   ChevronDown,
   UserCog,
@@ -22,7 +18,8 @@ import {
   UserPlus,
   CheckCircle,
   XCircle,
-  Clock
+  Clock,
+  CheckSquare
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -43,15 +40,12 @@ interface Notification {
 const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Projects', href: '/projects', icon: FolderOpen },
-  { name: 'Assets', href: '/assets', icon: ImageIcon },
-  { name: 'Campaigns', href: '/campaigns', icon: Calendar },
+  { name: 'Tasks', href: '/tasks', icon: CheckSquare },
   { name: 'Customers', href: '/customers', icon: Users },
-  { name: 'Reports', href: '/reports', icon: BarChart3 },
-  { name: 'Training', href: '/training', icon: GraduationCap },
+  { name: 'Settings', href: '/settings', icon: Settings },
 ]
 
 const secondaryNavigation = [
-  // { name: 'Settings', href: '/settings', icon: Settings }, // Temporarily hidden
   { name: 'User Management', href: '/user-management', icon: UserCog },
 ]
 
@@ -171,7 +165,7 @@ function UserMenu() {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 hover:bg-gray-100 rounded-lg px-2 py-1.5 transition-colors"
       >
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-teal-400 to-teal-600 text-sm font-medium text-white overflow-hidden">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground overflow-hidden">
           {user.imageUrl ? (
             <img src={user.imageUrl} alt={displayName} className="h-full w-full object-cover" />
           ) : (
@@ -375,10 +369,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     key={item.name}
                     href={item.href}
                     className={`
-                      flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
+                      flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all
                       ${isActive
-                        ? 'bg-teal-50 text-teal-700 border border-teal-200'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? 'bg-primary/10 text-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                       }
                     `}
                   >
@@ -398,10 +392,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     key={item.name}
                     href={item.href}
                     className={`
-                      flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors relative
+                      flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all relative
                       ${isActive
-                        ? 'bg-teal-50 text-teal-700 border border-teal-200'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? 'bg-primary/10 text-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                       }
                     `}
                   >

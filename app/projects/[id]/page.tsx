@@ -3,16 +3,13 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Calendar, Clock, Pencil } from 'lucide-react'
+import { ArrowLeft, Pencil, ExternalLink } from 'lucide-react'
 import { CommentThread } from '@/components/comments/CommentThread'
 import { CreateProjectModal } from '@/components/projects/CreateProjectModal'
+import { TaskModal } from '@/components/tasks/TaskModal'
+import { UserAvatar } from '@/components/common/UserAvatar'
 import { formatDate } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 
 interface Customer {
   id: string
@@ -26,66 +23,64 @@ interface Project {
   description: string | null
   status: string
   priority: string
-  due_date: string | null
-  customer_id: string | null
+  dueDate: string | null
+  customerId: string | null
   owner: string | null
   assignees: string[]
-  created_at: string
-  updated_at: string
-  completed_at: string | null
+  categoryIds: string[]
+  assets: Array<{ label: string; url: string }>
+  customFieldValues?: Record<string, string | string[]>
+  createdAt: string
+  updatedAt: string
+  completedAt: string | null
+  customer?: Customer | null
 }
 
-const getStatusVariant = (status: string) => {
-  const variants: Record<string, 'default' | 'secondary' | 'success' | 'warning'> = {
-    'IN_PROGRESS': 'default',
-    'REVIEW': 'warning',
-    'APPROVED': 'success',
-    'DRAFT': 'secondary',
-    'COMPLETED': 'success'
-  }
-  return variants[status] || 'secondary'
-}
-
-const getPriorityVariant = (priority: string) => {
-  const variants: Record<string, 'destructive' | 'warning' | 'secondary'> = {
-    'HIGH': 'destructive',
-    'MEDIUM': 'warning',
-    'LOW': 'secondary'
-  }
-  return variants[priority] || 'secondary'
+const formatStatus = (status: string) => {
+  return status.replace('_', ' ').charAt(0) + status.replace('_', ' ').slice(1).toLowerCase()
 }
 
 export default function ProjectDetailPage() {
   const params = useParams()
   const projectId = params.id as string
   const [project, setProject] = useState<Project | null>(null)
-  const [customer, setCustomer] = useState<Customer | null>(null)
   const [customers, setCustomers] = useState<Customer[]>([])
+  const [categories, setCategories] = useState<any[]>([])
+  const [tasks, setTasks] = useState<any[]>([])
+  const [users, setUsers] = useState<Array<{ id: string; name: string }>>([])
   const [loading, setLoading] = useState(true)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
 
   const fetchProject = async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('id', projectId)
-      .single()
+    try {
+      const response = await fetch(`/api/projects/${projectId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setProject(data)
 
-    if (error) {
-      console.error('Error fetching project:', error)
-    } else {
-      setProject(data)
+        // Fetch categories if project has them (with custom fields for field name lookup)
+        if (data.categoryIds && data.categoryIds.length > 0) {
+          const categoriesRes = await fetch('/api/project-categories')
+          if (categoriesRes.ok) {
+            const allCategories = await categoriesRes.json()
+            const projectCategories = allCategories.filter((c: any) =>
+              data.categoryIds.includes(c.id)
+            )
+            setCategories(projectCategories)
+          }
+        }
 
-      // Fetch customer if exists
-      if (data?.customer_id) {
-        const { data: customerData } = await supabase
-          .from('customers')
-          .select('id, name, type')
-          .eq('id', data.customer_id)
-          .single()
-        setCustomer(customerData)
+        // Fetch tasks
+        const tasksRes = await fetch(`/api/tasks?projectId=${projectId}`)
+        if (tasksRes.ok) {
+          const tasksData = await tasksRes.json()
+          setTasks(tasksData)
+        }
       }
+    } catch (error) {
+      console.error('Error fetching project:', error)
     }
     setLoading(false)
   }
@@ -98,222 +93,414 @@ export default function ProjectDetailPage() {
     setCustomers(data || [])
   }
 
+  const fetchUsers = async () => {
+    const { data } = await supabase
+      .from('users')
+      .select('id, name, email')
+      .eq('status', 'active')
+      .order('name')
+    if (data) {
+      setUsers(data.map(u => ({ id: u.id, name: u.name || u.email || 'Unknown' })))
+    }
+  }
+
   useEffect(() => {
+    // Scroll to top when page loads
+    window.scrollTo(0, 0)
+
     fetchProject()
     fetchCustomers()
+    fetchUsers()
   }, [projectId])
 
-  const handleProjectUpdated = async (updatedProject: any) => {
-    const { data, error } = await supabase
-      .from('projects')
-      .update({
-        title: updatedProject.title,
-        description: updatedProject.description,
-        status: updatedProject.status,
-        priority: updatedProject.priority,
-        due_date: updatedProject.dueDate || updatedProject.due_date || null,
-        customer_id: updatedProject.customerId || updatedProject.customer_id || null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', projectId)
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Error updating project:', error)
-    } else if (data) {
-      setProject(data)
-      // Refresh customer if changed
-      if (data.customer_id) {
-        const { data: customerData } = await supabase
-          .from('customers')
-          .select('id, name, type')
-          .eq('id', data.customer_id)
-          .single()
-        setCustomer(customerData)
-      } else {
-        setCustomer(null)
-      }
-    }
+  const handleProjectUpdated = async () => {
+    await fetchProject()
     setIsEditModalOpen(false)
+  }
+
+  const handleSaveTask = async (taskData: any) => {
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(taskData)
+      })
+
+      if (response.ok) {
+        await fetchProject()
+      }
+    } catch (error) {
+      console.error('Failed to create task:', error)
+    }
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-gray-900 border-r-transparent"></div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin h-6 w-6 border-2 border-solid border-foreground border-r-transparent rounded-full" />
       </div>
     )
   }
 
   if (!project) {
     return (
-      <div className="text-center py-12">
-        <h2 className="text-lg font-semibold">Project not found</h2>
-        <Link href="/projects" className="text-teal-600 hover:underline mt-2 inline-block">
-          Back to Projects
-        </Link>
+      <div className="min-h-screen bg-background">
+        <div className="mx-auto max-w-3xl px-6 py-16">
+          <div className="text-center py-16">
+            <p className="text-muted-foreground mb-8">Project not found</p>
+            <Link href="/projects" className="text-sm text-primary hover:text-primary/80 transition-colors">
+              Back to Projects
+            </Link>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Breadcrumb */}
-      <div>
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-3xl px-6 py-16">
+
+        {/* Back button */}
         <Link
           href="/projects"
-          className="inline-flex items-center text-sm text-muted-foreground hover:text-gray-900 mb-4"
+          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-12 transition-colors"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Projects
         </Link>
 
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight mb-2">{project.title}</h1>
-            {project.description && (
-              <p className="text-muted-foreground max-w-3xl">
-                {project.description}
-              </p>
-            )}
+        {/* Header */}
+        <div className="text-center mb-16">
+          <div className="flex items-center justify-center gap-4 mb-3">
+            <h1 className="text-5xl font-normal text-foreground tracking-tight">
+              {project.title}
+            </h1>
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Pencil className="h-5 w-5" />
+            </button>
           </div>
-          <div className="flex gap-2 items-start">
-            <Badge variant={getStatusVariant(project.status)}>
-              {project.status.replace('_', ' ')}
-            </Badge>
-            <Button variant="outline" onClick={() => setIsEditModalOpen(true)}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
-          </div>
+          {project.description && (
+            <p className="text-sm text-muted-foreground">
+              {project.description}
+            </p>
+          )}
         </div>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-3">
-        {/* Project Info Card */}
-        <Card className="col-span-2">
-          <CardHeader>
-            <CardTitle>Project Information</CardTitle>
-            <CardDescription>Details about this project</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Status</p>
-                <Badge variant={getStatusVariant(project.status)}>
-                  {project.status.replace('_', ' ')}
-                </Badge>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Priority</p>
-                <Badge variant={getPriorityVariant(project.priority)}>
-                  {project.priority}
-                </Badge>
-              </div>
-            </div>
-            {project.owner && (
-              <>
-                <Separator />
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Owner</p>
-                  <p className="text-sm font-medium">{project.owner}</p>
-                </div>
-              </>
-            )}
-            {project.assignees && project.assignees.length > 0 && (
-              <>
-                <Separator />
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Assignees</p>
-                  <div className="flex flex-wrap gap-2">
-                    {project.assignees.map((assignee, index) => (
-                      <Badge key={index} variant="secondary">{assignee}</Badge>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
 
         {/* Project Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Project Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Customer</p>
-              {customer ? (
-                <Link href={`/customers/${customer.id}`} className="flex items-center gap-2 hover:underline">
-                  <Avatar className="h-6 w-6">
-                    <AvatarFallback className="text-xs">
-                      {customer.name.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <p className="text-sm font-medium">{customer.name}</p>
-                </Link>
-              ) : (
-                <p className="text-sm text-muted-foreground">No customer assigned</p>
-              )}
-            </div>
-            <Separator />
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Priority</p>
-              <Badge variant={getPriorityVariant(project.priority)}>
-                {project.priority}
-              </Badge>
-            </div>
-            <Separator />
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Due Date</p>
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar className="h-4 w-4 text-gray-400" />
-                {project.due_date ? formatDate(project.due_date) : 'No due date'}
+        <div className="mb-20">
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-8">
+            Details
+          </h2>
+          <div className="space-y-0">
+            {/* Status */}
+            <div className="py-6">
+              <div className="flex items-baseline justify-between gap-8">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-medium text-foreground mb-1">
+                    Status
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {formatStatus(project.status)}
+                  </p>
+                </div>
               </div>
             </div>
-            <Separator />
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Created</p>
-              <div className="flex items-center gap-2 text-sm">
-                <Clock className="h-4 w-4 text-gray-400" />
-                {formatDate(project.created_at)}
+            <div className="h-px bg-border" />
+
+            {/* Priority */}
+            <div className="py-6">
+              <div className="flex items-baseline justify-between gap-8">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-medium text-foreground mb-1">
+                    Priority
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {project.priority.charAt(0) + project.priority.slice(1).toLowerCase()}
+                  </p>
+                </div>
               </div>
             </div>
-            {project.completed_at && (
+            <div className="h-px bg-border" />
+
+            {/* Customer */}
+            <div className="py-6">
+              <div className="flex items-baseline justify-between gap-8">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-medium text-foreground mb-1">
+                    Customer
+                  </h3>
+                  {project.customer ? (
+                    <Link
+                      href={`/customers/${project.customer.id}`}
+                      className="text-sm text-primary hover:text-primary/80 transition-colors"
+                    >
+                      {project.customer.name}
+                    </Link>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No customer assigned</p>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="h-px bg-border" />
+
+            {/* Due Date */}
+            <div className="py-6">
+              <div className="flex items-baseline justify-between gap-8">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-medium text-foreground mb-1">
+                    Due Date
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {project.dueDate ? formatDate(project.dueDate) : 'No due date'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Assignees */}
+            {project.assignees && project.assignees.length > 0 && (
               <>
-                <Separator />
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Completed</p>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Clock className="h-4 w-4 text-gray-400" />
-                    {formatDate(project.completed_at)}
+                <div className="h-px bg-border" />
+                <div className="py-6">
+                  <div className="flex items-baseline justify-between gap-8">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-medium text-foreground mb-3">
+                        Assignees
+                      </h3>
+                      <div className="flex flex-wrap gap-3">
+                        {project.assignees.map((userId) => (
+                          <UserAvatar key={userId} userId={userId} size="md" showName />
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </>
             )}
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Communication */}
-      <div>
-        <CommentThread entityType="PROJECT" entityId={project.id} />
-      </div>
+            {/* Categories */}
+            {categories.length > 0 && (
+              <>
+                <div className="h-px bg-border" />
+                <div className="py-6">
+                  <div className="flex items-baseline justify-between gap-8">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-medium text-foreground mb-3">
+                        Categories
+                      </h3>
+                      <div className="flex flex-wrap gap-3">
+                        {categories.map((category) => (
+                          <div key={category.id} className="flex items-center gap-2">
+                            <div
+                              className="h-3 w-3 rounded-full"
+                              style={{ backgroundColor: category.color }}
+                            />
+                            <span className="text-sm text-foreground">{category.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
 
-      <CreateProjectModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        onProjectCreated={handleProjectUpdated}
-        customers={customers}
-        initialData={{
-          ...project,
-          dueDate: project.due_date,
-          customerId: project.customer_id
-        }}
-        isEditing={true}
-      />
+            {/* Custom Fields */}
+            {project.customFieldValues && Object.keys(project.customFieldValues).length > 0 && (
+              <>
+                <div className="h-px bg-border" />
+                <div className="py-6">
+                  <h3 className="text-base font-medium text-foreground mb-3">
+                    Custom Fields
+                  </h3>
+                  <div className="space-y-2">
+                    {Object.entries(project.customFieldValues).map(([fieldId, value]) => {
+                      // Look up field definition to get name and type
+                      const fieldDef = categories
+                        .flatMap((c: any) => c.customFields || [])
+                        .find((f: any) => f.id === fieldId)
+
+                      if (!fieldDef) return null
+
+                      // Format display value based on field type
+                      let displayValue: React.ReactNode = value
+
+                      if (fieldDef.type === 'checkbox') {
+                        displayValue = value === 'true' ? 'Yes' : 'No'
+                      } else if (fieldDef.type === 'date') {
+                        displayValue = value ? formatDate(value as string) : ''
+                      } else if (fieldDef.type === 'url') {
+                        displayValue = value ? (
+                          <a
+                            href={value as string}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:text-primary/80 transition-colors inline-flex items-center gap-1"
+                          >
+                            {value as string}
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        ) : ''
+                      } else if (fieldDef.type === 'user') {
+                        const user = users.find(u => u.id === value)
+                        displayValue = user?.name || value
+                      } else if (fieldDef.type === 'multiselect') {
+                        displayValue = Array.isArray(value) ? value.join(', ') : value
+                      } else {
+                        displayValue = Array.isArray(value) ? value.join(', ') : value
+                      }
+
+                      return (
+                        <div key={fieldId} className="flex gap-3">
+                          <span className="text-sm font-medium text-muted-foreground min-w-[120px]">
+                            {fieldDef.name}:
+                          </span>
+                          <span className="text-sm text-foreground">{displayValue}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Assets */}
+        {project.assets && project.assets.length > 0 && (
+          <div className="mb-20">
+            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-8">
+              Assets & Files
+            </h2>
+            <div className="space-y-0">
+              {project.assets.map((asset, index) => (
+                <div key={index}>
+                  <a
+                    href={asset.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block py-6 transition-opacity hover:opacity-60"
+                  >
+                    <div className="flex items-baseline justify-between gap-8">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base font-medium text-foreground mb-1">
+                          {asset.label || 'Asset'}
+                        </h3>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <ExternalLink className="h-3 w-3" />
+                          <span className="truncate">{asset.url}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </a>
+                  {index < project.assets.length - 1 && <div className="h-px bg-border" />}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Tasks */}
+        <div className="mb-20">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+              Tasks
+            </h2>
+            <button
+              onClick={() => setIsTaskModalOpen(true)}
+              className="text-sm text-primary hover:text-primary/80 transition-colors"
+            >
+              + Add Task
+            </button>
+          </div>
+
+          {tasks.length === 0 ? (
+            <div className="text-center py-16">
+              <p className="text-muted-foreground">
+                No tasks yet
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-0">
+              {tasks.map((task, index) => (
+                <div key={task.id}>
+                  <div className="py-6">
+                    <div className="flex items-baseline justify-between gap-8">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base font-medium text-foreground mb-1">
+                          {task.title}
+                        </h3>
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                          <span>{formatStatus(task.status)}</span>
+                          {task.priority && (
+                            <>
+                              <span>·</span>
+                              <span>{task.priority.charAt(0) + task.priority.slice(1).toLowerCase()}</span>
+                            </>
+                          )}
+                          {task.targetDate && (
+                            <>
+                              <span>·</span>
+                              <span>Due {formatDate(task.targetDate)}</span>
+                            </>
+                          )}
+                          {task.assigneeIds && task.assigneeIds.length > 0 && (
+                            <>
+                              <span>·</span>
+                              <span>{task.assigneeIds.length} assigned</span>
+                            </>
+                          )}
+                          {task.attachment && (
+                            <>
+                              <span>·</span>
+                              <a
+                                href={task.attachment}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:text-primary/80"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                Attachment
+                              </a>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {index < tasks.length - 1 && <div className="h-px bg-border" />}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Comments */}
+        <div>
+          <CommentThread entityType="PROJECT" entityId={project.id} />
+        </div>
+
+        <CreateProjectModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onProjectCreated={handleProjectUpdated}
+          customers={customers}
+          initialData={project}
+          isEditing={true}
+        />
+
+        <TaskModal
+          isOpen={isTaskModalOpen}
+          onClose={() => setIsTaskModalOpen(false)}
+          onSave={handleSaveTask}
+          projectId={projectId}
+        />
+      </div>
     </div>
   )
 }

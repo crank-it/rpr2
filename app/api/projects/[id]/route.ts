@@ -66,12 +66,14 @@ export async function GET(
       customerId: project.customer_id,
       owner: project.owner,
       assignees: project.assignees || [],
+      categoryIds: project.category_ids || [],
+      assets: project.assets || [],
+      customFieldValues: project.custom_field_values || {},
       createdAt: project.created_at,
       updatedAt: project.updated_at,
       completedAt: project.completed_at,
       customer: customer,
       tasks: [],
-      assets: [],
       activities: []
     }
 
@@ -108,12 +110,21 @@ export async function PATCH(
       priority: body.priority,
       due_date: body.dueDate || null,
       customer_id: body.customerId || null,
+      assignees: body.assignees || [],
+      category_ids: body.categoryIds || [],
+      assets: body.assets || [],
+      custom_field_values: body.customFieldValues || {},
       updated_at: new Date().toISOString()
     }
 
     if (body.status === 'COMPLETED') {
       updateData.completed_at = new Date().toISOString()
     }
+
+    // Detect newly added categories for template task creation
+    const newCategoryIds = body.categoryIds?.filter(
+      (catId: string) => !existingProject?.category_ids?.includes(catId)
+    )
 
     const { data: project, error } = await supabase
       .from('projects')
@@ -199,6 +210,23 @@ export async function PATCH(
       await supabase.from('activities').insert(activities)
     }
 
+    // Auto-create tasks from templates for newly added categories
+    if (newCategoryIds && newCategoryIds.length > 0) {
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/tasks/create-from-templates`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            projectId: project.id,
+            categoryIds: newCategoryIds
+          })
+        })
+      } catch (error) {
+        console.error('Failed to create tasks from templates:', error)
+        // Don't fail the project update if template tasks fail
+      }
+    }
+
     // Transform to camelCase
     const transformedProject = {
       id: project.id,
@@ -210,6 +238,9 @@ export async function PATCH(
       customerId: project.customer_id,
       owner: project.owner,
       assignees: project.assignees || [],
+      categoryIds: project.category_ids || [],
+      assets: project.assets || [],
+      customFieldValues: project.custom_field_values || {},
       createdAt: project.created_at,
       updatedAt: project.updated_at,
       completedAt: project.completed_at
