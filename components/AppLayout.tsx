@@ -37,7 +37,7 @@ interface Notification {
 }
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: Home },
+  { name: 'Activity Feed', href: '/', icon: Home },
   { name: 'Projects', href: '/projects', icon: FolderOpen },
   { name: 'Tasks', href: '/tasks', icon: CheckSquare },
   { name: 'Customers', href: '/customers', icon: Users },

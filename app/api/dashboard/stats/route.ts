@@ -8,101 +8,170 @@ const supabase = createClient(
 
 export async function GET() {
   try {
-    // Get counts for all entities
-    const [projectsResult, assetsResult, campaignsResult, customersResult] = await Promise.all([
-      supabase.from('projects').select('id', { count: 'exact', head: true }),
-      supabase.from('assets').select('id', { count: 'exact', head: true }),
-      supabase.from('campaigns').select('id', { count: 'exact', head: true }),
-      supabase.from('customers').select('id', { count: 'exact', head: true })
-    ])
-
-    const projectCount = projectsResult.count || 0
-    const assetCount = assetsResult.count || 0
-    const campaignCount = campaignsResult.count || 0
-    const customerCount = customersResult.count || 0
-
-    // Get project status counts
-    const [activeResult, reviewResult, completedResult] = await Promise.all([
-      supabase.from('projects').select('id', { count: 'exact', head: true }).eq('status', 'IN_PROGRESS'),
-      supabase.from('projects').select('id', { count: 'exact', head: true }).eq('status', 'REVIEW'),
-      supabase.from('projects').select('id', { count: 'exact', head: true }).eq('status', 'COMPLETED')
-    ])
-
-    const activeProjects = activeResult.count || 0
-    const reviewProjects = reviewResult.count || 0
-    const completedProjects = completedResult.count || 0
-
-    // Get recent activity
+    // Get recent activities from activities table
     const { data: recentActivity } = await supabase
       .from('activities')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(5)
+      .limit(20)
 
-    // Get entity statuses for activities
+    // Get recent comments (all entity types)
+    const { data: recentComments } = await supabase
+      .from('comments')
+      .select('*')
+      .is('parent_id', null) // Only top-level comments
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(20)
+
     const activities = recentActivity || []
+    const comments = recentComments || []
 
-    // Collect entity IDs by type (activities use project_id, campaign_id, customer_id columns)
-    const projectIds = activities.filter(a => a.project_id).map(a => a.project_id)
-    const campaignIds = activities.filter(a => a.campaign_id).map(a => a.campaign_id)
+    // Collect entity IDs by type
+    const projectIds = [
+      ...activities.filter(a => a.project_id).map(a => a.project_id),
+      ...comments.filter(c => c.entity_type === 'PROJECT').map(c => c.entity_id)
+    ]
+    const campaignIds = [
+      ...activities.filter(a => a.campaign_id).map(a => a.campaign_id),
+      ...comments.filter(c => c.entity_type === 'CAMPAIGN').map(c => c.entity_id)
+    ]
+    const customerIds = [
+      ...comments.filter(c => c.entity_type === 'CUSTOMER').map(c => c.entity_id)
+    ]
 
-    // Fetch statuses from related tables (customers don't have status)
-    const [projectStatuses, campaignStatuses] = await Promise.all([
+    // Fetch entity details
+    const [projectsData, campaignsData, customersData] = await Promise.all([
       projectIds.length > 0
-        ? supabase.from('projects').select('id, status').in('id', projectIds)
+        ? supabase.from('projects').select('id, title, status').in('id', projectIds)
         : { data: [] },
       campaignIds.length > 0
-        ? supabase.from('campaigns').select('id, status').in('id', campaignIds)
+        ? supabase.from('campaigns').select('id, name, status').in('id', campaignIds)
+        : { data: [] },
+      customerIds.length > 0
+        ? supabase.from('customers').select('id, name').in('id', customerIds)
         : { data: [] }
     ])
 
-    // Create lookup maps for statuses
-    const statusMap: Record<string, string> = {}
-    projectStatuses.data?.forEach(p => { statusMap[`project-${p.id}`] = p.status })
-    campaignStatuses.data?.forEach(c => { statusMap[`campaign-${c.id}`] = c.status })
+    // Create lookup maps
+    const projectMap: Record<string, any> = {}
+    const campaignMap: Record<string, any> = {}
+    const customerMap: Record<string, any> = {}
 
-    // Format activity for frontend
-    const formattedActivity = activities.map((activity) => {
-      // Determine entity type and get status
+    projectsData.data?.forEach(p => { projectMap[p.id] = p })
+    campaignsData.data?.forEach(c => { campaignMap[c.id] = c })
+    customersData.data?.forEach(c => { customerMap[c.id] = c })
+
+    // Format activities
+    const formattedActivities = activities.map((activity) => {
       let entityType = 'Activity'
-      let entityStatus = ''
+      let entityName = activity.description || 'Activity'
+      let entityId = null
+      let linkHref = null
 
       if (activity.project_id) {
+        const project = projectMap[activity.project_id]
         entityType = 'Project'
-        entityStatus = statusMap[`project-${activity.project_id}`] || ''
+        entityName = project?.title || activity.description
+        entityId = activity.project_id
+        linkHref = `/projects/${activity.project_id}`
       } else if (activity.campaign_id) {
+        const campaign = campaignMap[activity.campaign_id]
         entityType = 'Campaign'
-        entityStatus = statusMap[`campaign-${activity.campaign_id}`] || ''
+        entityName = campaign?.name || activity.description
+        entityId = activity.campaign_id
+        linkHref = `/campaigns/${activity.campaign_id}`
       } else if (activity.customer_id) {
+        const customer = customerMap[activity.customer_id]
         entityType = 'Customer'
-        // Customers don't have status
-      } else if (activity.asset_id) {
-        entityType = 'Asset'
-        // Assets don't have status
+        entityName = customer?.name || activity.description
+        entityId = activity.customer_id
+        linkHref = `/customers/${activity.customer_id}`
       }
 
       return {
-        id: activity.id,
-        title: activity.description || 'Activity',
+        id: `activity-${activity.id}`,
+        activityType: 'activity',
+        title: entityName,
         type: entityType,
-        status: entityStatus,
-        time: getRelativeTime(new Date(activity.created_at))
+        description: activity.description,
+        time: getRelativeTime(new Date(activity.created_at)),
+        timestamp: activity.created_at,
+        entityId,
+        linkHref
       }
     })
 
+    // Format comments
+    const formattedComments = comments.map((comment) => {
+      let entityType = 'Comment'
+      let entityName = ''
+      let entityId = comment.entity_id
+      let linkHref = null
+
+      if (comment.entity_type === 'PROJECT') {
+        const project = projectMap[comment.entity_id]
+        entityType = 'Project Comment'
+        entityName = project?.title || 'Project'
+        linkHref = `/projects/${comment.entity_id}`
+      } else if (comment.entity_type === 'CAMPAIGN') {
+        const campaign = campaignMap[comment.entity_id]
+        entityType = 'Campaign Comment'
+        entityName = campaign?.name || 'Campaign'
+        linkHref = `/campaigns/${comment.entity_id}`
+      } else if (comment.entity_type === 'CUSTOMER') {
+        const customer = customerMap[comment.entity_id]
+        entityType = 'Customer Comment'
+        entityName = customer?.name || 'Customer'
+        linkHref = `/customers/${comment.entity_id}`
+      }
+
+      return {
+        id: `comment-${comment.id}`,
+        activityType: 'comment',
+        commentId: comment.id,
+        title: `${comment.author} commented on ${entityName}`,
+        type: entityType,
+        author: comment.author,
+        content: comment.content,
+        time: getRelativeTime(new Date(comment.created_at)),
+        timestamp: comment.created_at,
+        entityId,
+        entityType: comment.entity_type,
+        linkHref,
+        replyCount: 0 // Will be populated with replies
+      }
+    })
+
+    // Fetch reply counts for comments
+    const commentIds = comments.map(c => c.id)
+    if (commentIds.length > 0) {
+      const { data: repliesData } = await supabase
+        .from('comments')
+        .select('parent_id')
+        .in('parent_id', commentIds)
+        .is('deleted_at', null)
+
+      // Count replies per comment
+      const replyCounts: Record<string, number> = {}
+      repliesData?.forEach(reply => {
+        replyCounts[reply.parent_id] = (replyCounts[reply.parent_id] || 0) + 1
+      })
+
+      // Update reply counts
+      formattedComments.forEach(comment => {
+        const commentId = comment.commentId
+        comment.replyCount = replyCounts[commentId] || 0
+      })
+    }
+
+    // Combine and sort by timestamp
+    const allActivity = [...formattedActivities, ...formattedComments]
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, 20) // Keep top 20
+
     return NextResponse.json({
-      stats: {
-        projects: projectCount,
-        assets: assetCount,
-        campaigns: campaignCount,
-        customers: customerCount
-      },
-      projectStatus: {
-        active: activeProjects,
-        review: reviewProjects,
-        completed: completedProjects
-      },
-      recentActivity: formattedActivity
+      recentActivity: allActivity
     })
   } catch (error) {
     console.error('Failed to fetch dashboard stats:', error)
