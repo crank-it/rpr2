@@ -1,27 +1,14 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { currentUser } from '@clerk/nextjs/server'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-async function getCurrentUserName() {
-  try {
-    const user = await currentUser()
-    if (user) {
-      const { data: userData } = await supabase
-        .from('users')
-        .select('name, email')
-        .eq('id', user.id)
-        .single()
-      return userData?.name || userData?.email || user.emailAddresses?.[0]?.emailAddress || 'System'
-    }
-    return 'System'
-  } catch {
-    return 'System'
-  }
+// Temporarily disabled - no authentication
+function getCurrentUserName() {
+  return 'User'
 }
 
 export async function GET(request: Request) {
