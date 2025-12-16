@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { Send, MessageCircle, Loader2, Trash2 } from 'lucide-react'
-import { useUser } from '@clerk/nextjs'
 
 interface Comment {
   id: string
@@ -67,34 +66,31 @@ function RelativeTime({ timestamp }: { timestamp: string }) {
 }
 
 export function CommentThread({ entityType, entityId }: CommentThreadProps) {
-  const { user } = useUser()
   const [comments, setComments] = useState<Comment[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [newComment, setNewComment] = useState('')
   const [userRole, setUserRole] = useState<string>('')
 
-  // Get current user's display name
-  const currentUserName = user?.fullName || user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || 'Unknown'
+  // Get current user's display name (temporarily hardcoded - no auth)
+  const currentUserName = 'User'
   const isAdmin = userRole === 'admin' || userRole === 'superadmin'
 
-  useEffect(() => {
-    async function fetchUserRole() {
-      try {
-        const response = await fetch('/api/users/me')
-        if (response.ok) {
-          const data = await response.json()
-          setUserRole(data.role || '')
-        }
-      } catch (error) {
-        console.error('Failed to fetch user role:', error)
-      }
-    }
-
-    if (user) {
-      fetchUserRole()
-    }
-  }, [user])
+  // Temporarily disabled - no authentication
+  // useEffect(() => {
+  //   async function fetchUserRole() {
+  //     try {
+  //       const response = await fetch('/api/users/me')
+  //       if (response.ok) {
+  //         const data = await response.json()
+  //         setUserRole(data.role || '')
+  //       }
+  //     } catch (error) {
+  //       console.error('Failed to fetch user role:', error)
+  //     }
+  //   }
+  //   fetchUserRole()
+  // }, [])
 
   useEffect(() => {
     async function fetchComments() {

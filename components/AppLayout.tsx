@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useUser, useClerk } from '@clerk/nextjs'
 import {
   Home,
   FolderOpen,
@@ -11,7 +10,6 @@ import {
   Menu,
   Settings,
   Bug,
-  LogOut,
   ChevronDown,
   UserCog,
   Bell,
@@ -145,66 +143,10 @@ function NotificationDropdown({
   )
 }
 
-function UserMenu() {
-  const { user } = useUser()
-  const { signOut } = useClerk()
-  const [isOpen, setIsOpen] = useState(false)
-
-  if (!user) return null
-
-  const initials = user.fullName
-    ? user.fullName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
-    : user.emailAddresses[0]?.emailAddress?.slice(0, 2).toUpperCase() || 'U'
-
-  const displayName = user.fullName || user.emailAddresses[0]?.emailAddress?.split('@')[0] || 'User'
-  const email = user.emailAddresses[0]?.emailAddress || ''
-
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 hover:bg-gray-100 rounded-lg px-2 py-1.5 transition-colors"
-      >
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground overflow-hidden">
-          {user.imageUrl ? (
-            <img src={user.imageUrl} alt={displayName} className="h-full w-full object-cover" />
-          ) : (
-            initials
-          )}
-        </div>
-        <span className="text-sm font-medium text-gray-700 hidden sm:block">{displayName}</span>
-        <ChevronDown className="h-4 w-4 text-gray-500" />
-      </button>
-
-      {isOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setIsOpen(false)}
-          />
-          <div className="absolute right-0 mt-2 w-56 rounded-lg bg-white shadow-lg border z-50">
-            <div className="px-4 py-3 border-b">
-              <p className="text-sm font-medium text-gray-900">{displayName}</p>
-              <p className="text-xs text-muted-foreground truncate">{email}</p>
-            </div>
-            <div className="py-1">
-              <button
-                onClick={() => {
-                  setIsOpen(false)
-                  signOut({ redirectUrl: '/sign-in' })
-                }}
-                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              >
-                <LogOut className="h-4 w-4" />
-                Sign out
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
+// UserMenu temporarily disabled - no authentication
+// function UserMenu() {
+//   return null
+// }
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -471,7 +413,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               )}
             </div>
 
-            <UserMenu />
+            {/* <UserMenu /> */}
           </header>
 
           {/* Page Content */}
