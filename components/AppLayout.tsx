@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
@@ -157,10 +157,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isNotificationOpen, setIsNotificationOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const mainContentRef = useRef<HTMLElement>(null)
 
-  // Close mobile menu when route changes
+  // Close mobile menu and scroll to top when route changes
   useEffect(() => {
     setIsMobileMenuOpen(false)
+    // Scroll the main content container to top
+    if (mainContentRef.current) {
+      mainContentRef.current.scrollTo(0, 0)
+    }
   }, [pathname])
 
   // Fetch pending users count and create initial notification
@@ -516,7 +521,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </header>
 
           {/* Page Content */}
-          <main className="flex-1 overflow-y-auto bg-gray-50">
+          <main ref={mainContentRef} className="flex-1 overflow-y-auto bg-gray-50">
             <div className="page-container">
               {children}
             </div>
