@@ -33,10 +33,12 @@ export default function UserManagementPage() {
       const usersList = Array.isArray(data) ? data : (data.users || []);
       setUsers(usersList);
 
-      const currentUser = usersList.find((u: User) => u.id === CURRENT_USER_ID);
-      setCurrentUserRole(currentUser?.role || 'superadmin'); // Default to superadmin for demo
+      // Always set to superadmin since no auth system is in place
+      setCurrentUserRole('superadmin');
     } catch (error) {
       console.error("Failed to fetch users:", error);
+      // Still set role even on error so user can access the page
+      setCurrentUserRole('superadmin');
     } finally {
       setLoading(false);
     }
