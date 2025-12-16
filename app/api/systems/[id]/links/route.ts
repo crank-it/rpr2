@@ -10,6 +10,49 @@ function getCurrentUserName() {
   return 'User'
 }
 
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+
+    const { data: links, error } = await supabase
+      .from('system_links')
+      .select('*')
+      .eq('system_id', id)
+      .is('deleted_at', null)
+      .order('sort_order', { ascending: true })
+
+    if (error) {
+      console.error('Failed to fetch links:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch links' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json(
+      links.map(link => ({
+        id: link.id,
+        title: link.title,
+        url: link.url,
+        description: link.description,
+        linkType: link.link_type,
+        sortOrder: link.sort_order,
+        addedBy: link.added_by,
+        createdAt: link.created_at
+      }))
+    )
+  } catch (error) {
+    console.error('Failed to fetch links:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch links' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -38,6 +81,7 @@ export async function POST(
         system_id: id,
         title: body.title,
         url: body.url,
+        link_type: body.linkType || 'external',
         description: body.description || null,
         sort_order: body.sortOrder ?? nextSortOrder,
         added_by: performedBy
@@ -69,6 +113,7 @@ export async function POST(
       id: link.id,
       title: link.title,
       url: link.url,
+      linkType: link.link_type,
       description: link.description,
       sortOrder: link.sort_order,
       addedBy: link.added_by,

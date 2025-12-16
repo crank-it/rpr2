@@ -10,6 +10,57 @@ function getCurrentUserName() {
   return 'User'
 }
 
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+
+    const { data: assignments, error } = await supabase
+      .from('system_assignments')
+      .select(`
+        *,
+        system_acknowledgements (
+          version,
+          acknowledged_at
+        )
+      `)
+      .eq('system_id', id)
+      .is('deleted_at', null)
+      .order('assigned_at', { ascending: false })
+
+    if (error) {
+      console.error('Failed to fetch assignments:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch assignments' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json(
+      assignments.map(assignment => {
+        const latestAck = assignment.system_acknowledgements?.[0]
+        return {
+          id: assignment.id,
+          userId: assignment.user_id,
+          assignedBy: assignment.assigned_by,
+          assignedAt: assignment.assigned_at,
+          requiresAcknowledgement: assignment.requires_acknowledgement,
+          acknowledgedAt: latestAck?.acknowledged_at || null,
+          acknowledgedVersion: latestAck?.version || null
+        }
+      })
+    )
+  } catch (error) {
+    console.error('Failed to fetch assignments:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch assignments' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
