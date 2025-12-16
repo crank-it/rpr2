@@ -16,6 +16,22 @@ interface System {
   version: number
 }
 
+// Predefined categories for business systems
+const SYSTEM_CATEGORIES = [
+  'Sales & Marketing',
+  'Customer Service',
+  'Operations',
+  'File Management',
+  'Communication',
+  'Product',
+  'Finance & Accounting',
+  'Human Resources',
+  'Training & Development',
+  'Inventory Management',
+  'Quality Control',
+  'Compliance & Safety'
+]
+
 export default function EditSystemPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -172,14 +188,17 @@ export default function EditSystemPage({ params }: { params: { id: string } }) {
                 <label className="block text-sm font-medium mb-1.5">
                   Category <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
+                <select
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  placeholder="e.g., Sales, Operations, HR"
                   className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   required
-                />
+                >
+                  <option value="">Select category</option>
+                  {SYSTEM_CATEGORIES.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
               </div>
 
               <div>

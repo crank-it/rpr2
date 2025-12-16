@@ -18,11 +18,26 @@ interface User {
   name: string
 }
 
+// Predefined categories for business systems
+const SYSTEM_CATEGORIES = [
+  'Sales & Marketing',
+  'Customer Service',
+  'Operations',
+  'File Management',
+  'Communication',
+  'Product',
+  'Finance & Accounting',
+  'Human Resources',
+  'Training & Development',
+  'Inventory Management',
+  'Quality Control',
+  'Compliance & Safety'
+]
+
 export default function NewSystemPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [users, setUsers] = useState<User[]>([])
-  const [categories, setCategories] = useState<string[]>([])
   const [formData, setFormData] = useState({
     title: '',
     category: '',
@@ -46,14 +61,6 @@ export default function NewSystemPage() {
           .filter((u: any) => u.status === 'active')
           .map((u: any) => ({ id: u.id, name: u.name || u.email }))
         setUsers(activeUsers)
-      }
-
-      // Fetch existing systems to extract unique categories
-      const systemsRes = await fetch('/api/systems')
-      if (systemsRes.ok) {
-        const systemsData = await systemsRes.json()
-        const uniqueCategories = Array.from(new Set(systemsData.map((s: any) => s.category)))
-        setCategories(uniqueCategories as string[])
       }
     } catch (error) {
       console.error('Failed to fetch data:', error)
@@ -164,20 +171,10 @@ export default function NewSystemPage() {
                 required
               >
                 <option value="">Select category</option>
-                {categories.map(cat => (
+                {SYSTEM_CATEGORIES.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
-                <option value="__new__">+ Add new category</option>
               </select>
-              {formData.category === '__new__' && (
-                <input
-                  type="text"
-                  placeholder="Enter new category"
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full border-0 border-b border-border bg-transparent py-3 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors mt-4"
-                  autoFocus
-                />
-              )}
             </div>
 
             <div>
