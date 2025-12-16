@@ -3,6 +3,7 @@
 import { Plus, Search } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { Filters } from '@/components/ui/filters'
 
 interface Customer {
   id: string
@@ -24,6 +25,10 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({
+    type: '',
+    sortBy: 'name'
+  })
 
   const fetchCustomers = async () => {
     setLoading(true)
@@ -48,8 +53,58 @@ export default function CustomersPage() {
     const matchesSearch = customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.type?.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchesSearch
+
+    const matchesType = !filterValues.type || customer.type === filterValues.type
+
+    return matchesSearch && matchesType
   })
+
+  // Apply sorting
+  const sortedCustomers = [...filteredCustomers].sort((a, b) => {
+    const sortBy = filterValues.sortBy
+    if (sortBy === 'name') return a.name.localeCompare(b.name)
+    if (sortBy === '-name') return b.name.localeCompare(a.name)
+    if (sortBy === '-created_at') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    if (sortBy === 'created_at') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    return 0
+  })
+
+  // Get unique types for filter
+  const customerTypes = Array.from(new Set(customers.map(c => c.type).filter(Boolean)))
+
+  const filterConfig = [
+    {
+      key: 'type',
+      label: 'Type',
+      type: 'select' as const,
+      options: customerTypes.map(type => ({
+        label: type.charAt(0) + type.slice(1).toLowerCase(),
+        value: type
+      }))
+    },
+    {
+      key: 'sortBy',
+      label: 'Sort By',
+      type: 'select' as const,
+      options: [
+        { label: 'Name (A-Z)', value: 'name' },
+        { label: 'Name (Z-A)', value: '-name' },
+        { label: 'Recently Added', value: '-created_at' },
+        { label: 'Oldest Added', value: 'created_at' }
+      ]
+    }
+  ]
+
+  const handleFilterChange = (key: string, value: string) => {
+    setFilterValues(prev => ({ ...prev, [key]: value }))
+  }
+
+  const handleClearFilters = () => {
+    setFilterValues({
+      type: '',
+      sortBy: 'name'
+    })
+  }
 
   const formatCustomerType = (type: string) => {
     return type.charAt(0) + type.slice(1).toLowerCase()
@@ -70,20 +125,30 @@ export default function CustomersPage() {
             Customers
           </h1>
           <p className="text-sm text-muted-foreground">
-            {filteredCustomers.length} {filteredCustomers.length === 1 ? 'customer' : 'customers'}
+            {sortedCustomers.length} {sortedCustomers.length === 1 ? 'customer' : 'customers'}
           </p>
         </div>
 
-        {/* Search */}
-        <div className="relative mb-16">
-          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search"
-            className="w-full border-0 border-b border-border bg-transparent py-3 pl-12 pr-4 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        {/* Search and Filters */}
+        <div className="mb-16">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search"
+              className="w-full border-0 border-b border-border bg-transparent py-3 pl-12 pr-20 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <div className="absolute right-0 top-1/2 -translate-y-1/2">
+              <Filters
+                filters={filterConfig}
+                values={filterValues}
+                onChange={handleFilterChange}
+                onClear={handleClearFilters}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Customers List */}
@@ -91,7 +156,7 @@ export default function CustomersPage() {
           <div className="text-center py-16">
             <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-foreground border-r-transparent"></div>
           </div>
-        ) : filteredCustomers.length === 0 ? (
+        ) : sortedCustomers.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-muted-foreground mb-8">
               {searchQuery ? 'No customers found' : 'No customers yet'}
@@ -110,7 +175,7 @@ export default function CustomersPage() {
           <div className="space-y-0">
             {/* Group by first letter */}
             {(() => {
-              const grouped = filteredCustomers.reduce((acc, customer) => {
+              const grouped = sortedCustomers.reduce((acc, customer) => {
                 const letter = customer.name.charAt(0).toUpperCase()
                 if (!acc[letter]) acc[letter] = []
                 acc[letter].push(customer)

@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import { CreateProjectModal } from '@/components/projects/CreateProjectModal'
 import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
+import { Filters } from '@/components/ui/filters'
 
 interface Project {
   id: string
@@ -33,6 +34,11 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({
+    status: '',
+    priority: '',
+    sortBy: '-updated_at'
+  })
 
   const fetchData = async () => {
     setLoading(true)
@@ -100,11 +106,72 @@ export default function ProjectsPage() {
   const filteredProjects = projects.filter(project => {
     const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.description?.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchesSearch
+
+    const matchesStatus = !filterValues.status || project.status === filterValues.status
+    const matchesPriority = !filterValues.priority || project.priority === filterValues.priority
+
+    return matchesSearch && matchesStatus && matchesPriority
+  })
+
+  // Apply sorting
+  const sortedProjects = [...filteredProjects].sort((a, b) => {
+    const sortBy = filterValues.sortBy
+    if (sortBy === '-updated_at') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    if (sortBy === 'updated_at') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    if (sortBy === 'title') return a.title.localeCompare(b.title)
+    if (sortBy === '-title') return b.title.localeCompare(a.title)
+    return 0
   })
 
   const formatStatus = (status: string) => {
     return status.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())
+  }
+
+  const filterConfig = [
+    {
+      key: 'status',
+      label: 'Status',
+      type: 'select' as const,
+      options: [
+        { label: 'Draft', value: 'DRAFT' },
+        { label: 'In Progress', value: 'IN_PROGRESS' },
+        { label: 'Completed', value: 'COMPLETED' },
+        { label: 'On Hold', value: 'ON_HOLD' }
+      ]
+    },
+    {
+      key: 'priority',
+      label: 'Priority',
+      type: 'select' as const,
+      options: [
+        { label: 'High', value: 'HIGH' },
+        { label: 'Medium', value: 'MEDIUM' },
+        { label: 'Low', value: 'LOW' }
+      ]
+    },
+    {
+      key: 'sortBy',
+      label: 'Sort By',
+      type: 'select' as const,
+      options: [
+        { label: 'Recently Updated', value: '-updated_at' },
+        { label: 'Oldest Updated', value: 'updated_at' },
+        { label: 'Title (A-Z)', value: 'title' },
+        { label: 'Title (Z-A)', value: '-title' }
+      ]
+    }
+  ]
+
+  const handleFilterChange = (key: string, value: string) => {
+    setFilterValues(prev => ({ ...prev, [key]: value }))
+  }
+
+  const handleClearFilters = () => {
+    setFilterValues({
+      status: '',
+      priority: '',
+      sortBy: '-updated_at'
+    })
   }
 
   return (
@@ -118,20 +185,30 @@ export default function ProjectsPage() {
             Projects
           </h1>
           <p className="text-sm text-muted-foreground">
-            {filteredProjects.length} {filteredProjects.length === 1 ? 'project' : 'projects'}
+            {sortedProjects.length} {sortedProjects.length === 1 ? 'project' : 'projects'}
           </p>
         </div>
 
-        {/* Search bar - Minimal */}
-        <div className="relative mb-16">
-          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search"
-            className="w-full border-0 border-b border-border bg-transparent py-3 pl-12 pr-4 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        {/* Search bar and Filters - Minimal */}
+        <div className="mb-16">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search"
+              className="w-full border-0 border-b border-border bg-transparent py-3 pl-12 pr-20 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <div className="absolute right-0 top-1/2 -translate-y-1/2">
+              <Filters
+                filters={filterConfig}
+                values={filterValues}
+                onChange={handleFilterChange}
+                onClear={handleClearFilters}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Projects List */}
@@ -139,7 +216,7 @@ export default function ProjectsPage() {
           <div className="text-center py-16">
             <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-foreground border-r-transparent"></div>
           </div>
-        ) : filteredProjects.length === 0 ? (
+        ) : sortedProjects.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-muted-foreground mb-8">
               {searchQuery ? 'No projects found' : 'No projects yet'}
@@ -156,7 +233,7 @@ export default function ProjectsPage() {
           </div>
         ) : (
           <div className="space-y-0">
-            {filteredProjects.map((project, index) => {
+            {sortedProjects.map((project, index) => {
               const customerName = getCustomerName(project)
 
               return (
@@ -188,7 +265,7 @@ export default function ProjectsPage() {
                       </div>
                     </div>
                   </Link>
-                  {index < filteredProjects.length - 1 && (
+                  {index < sortedProjects.length - 1 && (
                     <div className="h-px bg-border" />
                   )}
                 </div>

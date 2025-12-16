@@ -18,7 +18,8 @@ import {
   XCircle,
   Clock,
   CheckSquare,
-  X
+  X,
+  FileText
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -41,6 +42,7 @@ const navigation = [
   { name: 'Projects', href: '/projects', icon: FolderOpen },
   { name: 'Tasks', href: '/tasks', icon: CheckSquare },
   { name: 'Customers', href: '/customers', icon: Users },
+  { name: 'Systems', href: '/systems', icon: FileText },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
 
