@@ -374,7 +374,7 @@ function CommentItem({ comment, entityType, entityId, onReplyAdded, isReply = fa
                 isAdmin={isAdmin}
                 onDelete={onDelete}
               />
-              {index < comment.replies.length - 1 && <div className="h-px bg-border ml-8" />}
+              {comment.replies && index < comment.replies.length - 1 && <div className="h-px bg-border ml-8" />}
             </div>
           ))}
         </div>
