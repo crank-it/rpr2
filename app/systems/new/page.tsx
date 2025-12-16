@@ -1,11 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Plus, X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { MultiSelect } from '@/components/ui/multi-select'
 
 interface LinkInput {
   id: string
@@ -14,9 +13,16 @@ interface LinkInput {
   linkType: string
 }
 
+interface User {
+  id: string
+  name: string
+}
+
 export default function NewSystemPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [users, setUsers] = useState<User[]>([])
+  const [categories, setCategories] = useState<string[]>([])
   const [formData, setFormData] = useState({
     title: '',
     category: '',
@@ -24,7 +30,35 @@ export default function NewSystemPage() {
     description: ''
   })
   const [links, setLinks] = useState<LinkInput[]>([])
-  const [userIds, setUserIds] = useState('')
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
+
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  const fetchData = async () => {
+    try {
+      // Fetch active users
+      const usersRes = await fetch('/api/users')
+      if (usersRes.ok) {
+        const usersData = await usersRes.json()
+        const activeUsers = usersData
+          .filter((u: any) => u.status === 'active')
+          .map((u: any) => ({ id: u.id, name: u.name || u.email }))
+        setUsers(activeUsers)
+      }
+
+      // Fetch existing systems to extract unique categories
+      const systemsRes = await fetch('/api/systems')
+      if (systemsRes.ok) {
+        const systemsData = await systemsRes.json()
+        const uniqueCategories = Array.from(new Set(systemsData.map((s: any) => s.category)))
+        setCategories(uniqueCategories as string[])
+      }
+    } catch (error) {
+      console.error('Failed to fetch data:', error)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -40,7 +74,7 @@ export default function NewSystemPage() {
       const payload = {
         ...formData,
         links: links.filter(link => link.title && link.url),
-        userIds: userIds.split(',').map(id => id.trim()).filter(Boolean)
+        userIds: selectedUserIds
       }
 
       const response = await fetch('/api/systems', {
@@ -84,177 +118,196 @@ export default function NewSystemPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <div>
-        <Link href="/systems">
-          <Button variant="ghost" size="sm" className="mb-2">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Systems
-          </Button>
-        </Link>
-        <h1 className="text-3xl font-semibold tracking-tight">Create New System</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Document a business system, SOP, or process
-        </p>
-      </div>
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-3xl px-6 py-16">
+        <div className="mb-12">
+          <Link href="/systems">
+            <button className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Systems
+            </button>
+          </Link>
+          <h1 className="text-5xl font-normal text-foreground tracking-tight mb-3">
+            New System
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Document a business system, SOP, or process
+          </p>
+        </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Basic Information */}
-        <Card className="p-6">
-          <h3 className="text-base font-medium mb-4">Basic Information</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1.5">
-                Title <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="e.g., Client Onboarding Process"
-                className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1.5">
-                  Category <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  placeholder="e.g., Sales, Operations, HR"
-                  className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1.5">
-                  Status
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="Draft">Draft</option>
-                  <option value="Start">Start</option>
-                  <option value="Approve">Approve</option>
-                  <option value="Need Review">Need Review</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1.5">
-                Description
-              </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Describe the purpose and scope of this system..."
-                className="w-full px-3 py-2 border rounded-lg text-sm min-h-[120px] resize-none focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-          </div>
-        </Card>
-
-        {/* Links & Resources */}
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-medium">Links & Resources</h3>
-            <Button type="button" size="sm" onClick={addLink}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Link
-            </Button>
-          </div>
-
-          {links.length > 0 ? (
-            <div className="space-y-3">
-              {links.map((link) => (
-                <div key={link.id} className="p-3 border rounded-lg space-y-2">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={link.title}
-                      onChange={(e) => updateLink(link.id, 'title', e.target.value)}
-                      placeholder="Link title"
-                      className="flex-1 px-3 py-2 border rounded-lg text-sm"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeLink(link.id)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="url"
-                      value={link.url}
-                      onChange={(e) => updateLink(link.id, 'url', e.target.value)}
-                      placeholder="https://..."
-                      className="flex-1 px-3 py-2 border rounded-lg text-sm"
-                    />
-                    <select
-                      value={link.linkType}
-                      onChange={(e) => updateLink(link.id, 'linkType', e.target.value)}
-                      className="px-3 py-2 border rounded-lg text-sm"
-                    >
-                      <option value="external">External Link</option>
-                      <option value="document">Document</option>
-                      <option value="video">Video</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground italic">
-              No links added yet. Click "Add Link" to add resources.
-            </p>
-          )}
-        </Card>
-
-        {/* Initial Assignments */}
-        <Card className="p-6">
-          <h3 className="text-base font-medium mb-4">Initial Assignments</h3>
+        <form onSubmit={handleSubmit} className="space-y-12">
+          {/* Title */}
           <div>
-            <label className="block text-sm font-medium mb-1.5">
-              User IDs (comma-separated)
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Title <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
-              value={userIds}
-              onChange={(e) => setUserIds(e.target.value)}
-              placeholder="e.g., user1, user2, user3"
-              className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              placeholder="e.g., Client Onboarding Process"
+              className="w-full border-0 border-b border-border bg-transparent py-3 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors"
+              required
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              Users will be assigned and notified when the system is created
-            </p>
           </div>
-        </Card>
 
-        {/* Actions */}
-        <div className="flex items-center gap-3">
-          <Button type="submit" disabled={loading}>
-            {loading ? 'Creating...' : 'Create System'}
-          </Button>
-          <Link href="/systems">
-            <Button type="button" variant="outline">
-              Cancel
-            </Button>
-          </Link>
-        </div>
-      </form>
+          {/* Category and Status */}
+          <div className="grid grid-cols-2 gap-8">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Category <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                className="w-full border-0 border-b border-border bg-transparent py-3 text-base text-foreground focus:border-primary focus:outline-none transition-colors"
+                required
+              >
+                <option value="">Select category</option>
+                {categories.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+                <option value="__new__">+ Add new category</option>
+              </select>
+              {formData.category === '__new__' && (
+                <input
+                  type="text"
+                  placeholder="Enter new category"
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  className="w-full border-0 border-b border-border bg-transparent py-3 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors mt-4"
+                  autoFocus
+                />
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Status
+              </label>
+              <select
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                className="w-full border-0 border-b border-border bg-transparent py-3 text-base text-foreground focus:border-primary focus:outline-none transition-colors"
+              >
+                <option value="Draft">Draft</option>
+                <option value="Start">Start</option>
+                <option value="Approve">Approve</option>
+                <option value="Need Review">Need Review</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Description
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Describe the purpose and scope of this system..."
+              className="w-full border border-border rounded-lg bg-transparent px-4 py-3 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors resize-none"
+              rows={4}
+            />
+          </div>
+
+          {/* Links & Resources */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <label className="block text-sm font-medium text-foreground">
+                Links & Resources
+              </label>
+              <button
+                type="button"
+                onClick={addLink}
+                className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                Add Link
+              </button>
+            </div>
+
+            {links.length > 0 && (
+              <div className="space-y-3">
+                {links.map((link) => (
+                  <div key={link.id} className="border border-border rounded-lg p-4 space-y-3">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={link.title}
+                        onChange={(e) => updateLink(link.id, 'title', e.target.value)}
+                        placeholder="Link title"
+                        className="flex-1 border-0 border-b border-border bg-transparent py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeLink(link.id)}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        value={link.url}
+                        onChange={(e) => updateLink(link.id, 'url', e.target.value)}
+                        placeholder="https://..."
+                        className="flex-1 border-0 border-b border-border bg-transparent py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                      />
+                      <select
+                        value={link.linkType}
+                        onChange={(e) => updateLink(link.id, 'linkType', e.target.value)}
+                        className="border-0 border-b border-border bg-transparent py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+                      >
+                        <option value="external">External Link</option>
+                        <option value="document">Document</option>
+                        <option value="video">Video</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Responsible Team Members */}
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Responsible Team Members
+            </label>
+            <p className="text-sm text-muted-foreground mb-4">
+              Select team members who need to acknowledge this system
+            </p>
+            <MultiSelect
+              options={users.map(u => ({ value: u.id, label: u.name }))}
+              value={selectedUserIds}
+              onChange={setSelectedUserIds}
+              placeholder="Search and select team members..."
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-4 pt-8 border-t border-border">
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-6 py-2.5 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {loading ? 'Creating...' : 'Create System'}
+            </button>
+            <Link href="/systems">
+              <button
+                type="button"
+                className="px-6 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Cancel
+              </button>
+            </Link>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }

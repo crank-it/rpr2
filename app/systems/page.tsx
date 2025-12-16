@@ -2,10 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Plus, Search, Filter, CheckCircle, AlertCircle, RotateCw } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Card } from '@/components/ui/card'
+import { useRouter } from 'next/navigation'
+import { Plus, Search, CheckCircle, AlertCircle, RotateCw } from 'lucide-react'
 
 interface System {
   id: string
@@ -31,30 +29,19 @@ const statusColors: Record<string, string> = {
 }
 
 export default function SystemsPage() {
+  const router = useRouter()
   const [systems, setSystems] = useState<System[]>([])
   const [loading, setLoading] = useState(true)
-  const [filters, setFilters] = useState({
-    status: '',
-    category: '',
-    assignedToMe: false,
-    needsAcknowledgement: false,
-    search: ''
-  })
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     fetchSystems()
-  }, [filters])
+  }, [])
 
   const fetchSystems = async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams()
-
-      if (filters.status) params.append('status', filters.status)
-      if (filters.category) params.append('category', filters.category)
-      if (filters.assignedToMe) params.append('assigned_to_me', 'true')
-      if (filters.needsAcknowledgement) params.append('needs_acknowledgement', 'true')
-      if (filters.search) params.append('search', filters.search)
       params.append('sort', '-updated_at')
 
       const response = await fetch(`/api/systems?${params}`)
@@ -68,6 +55,13 @@ export default function SystemsPage() {
       setLoading(false)
     }
   }
+
+  const filteredSystems = systems.filter(system => {
+    const matchesSearch = system.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      system.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      system.category.toLowerCase().includes(searchQuery.toLowerCase())
+    return matchesSearch
+  })
 
   const getAcknowledgementBadge = (status: System['userAcknowledgementStatus']) => {
     if (!status) return null
@@ -110,164 +104,119 @@ export default function SystemsPage() {
     return date.toLocaleDateString()
   }
 
-  // Get unique categories for filter
-  const categories = Array.from(new Set(systems.map(s => s.category)))
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Systems</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage business systems, SOPs, and processes
+    <div className="min-h-screen bg-background">
+      {/* Centered container with max width */}
+      <div className="mx-auto max-w-3xl px-6 py-16">
+
+        {/* Header - Centered */}
+        <div className="text-center mb-12">
+          <h1 className="text-5xl font-normal text-foreground tracking-tight mb-3">
+            Systems
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {filteredSystems.length} {filteredSystems.length === 1 ? 'system' : 'systems'}
           </p>
         </div>
-        <Link href="/systems/new">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            New System
-          </Button>
-        </Link>
-      </div>
 
-      {/* Filters */}
-      <Card className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          {/* Search */}
-          <div className="md:col-span-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search systems..."
-                value={filters.search}
-                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
+        {/* Search bar - Minimal */}
+        <div className="relative mb-16">
+          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search"
+            className="w-full border-0 border-b border-border bg-transparent py-3 pl-12 pr-4 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        {/* Systems List */}
+        {loading ? (
+          <div className="text-center py-16">
+            <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-foreground border-r-transparent"></div>
           </div>
-
-          {/* Status Filter */}
-          <select
-            value={filters.status}
-            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            <option value="">All Statuses</option>
-            <option value="Draft">Draft</option>
-            <option value="Start">Start</option>
-            <option value="Approve">Approve</option>
-            <option value="Need Review">Need Review</option>
-          </select>
-
-          {/* Category Filter */}
-          <select
-            value={filters.category}
-            onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-            className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            <option value="">All Categories</option>
-            {categories.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
+        ) : filteredSystems.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="text-muted-foreground mb-8">
+              {searchQuery ? 'No systems found' : 'No systems yet'}
+            </p>
+            {!searchQuery && (
+              <button
+                onClick={() => router.push('/systems/new')}
+                className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                Create your first system
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-0">
+            {filteredSystems.map((system, index) => (
+              <div key={system.id}>
+                <Link
+                  href={`/systems/${system.id}`}
+                  className="block py-8 transition-opacity hover:opacity-60"
+                >
+                  <div className="flex items-baseline justify-between gap-8">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-medium text-foreground mb-1">
+                        {system.title}
+                      </h3>
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                        <span>{system.category}</span>
+                        <span>·</span>
+                        <span>{system.status}</span>
+                        <span>·</span>
+                        <span>v{system.version}</span>
+                        {system.userAcknowledgementStatus === 'needs_acknowledgement' && (
+                          <>
+                            <span>·</span>
+                            <span className="text-amber-600 flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3" />
+                              Needs acknowledgement
+                            </span>
+                          </>
+                        )}
+                        {system.userAcknowledgementStatus === 'update_required' && (
+                          <>
+                            <span>·</span>
+                            <span className="text-red-600 flex items-center gap-1">
+                              <RotateCw className="h-3 w-3" />
+                              Update required
+                            </span>
+                          </>
+                        )}
+                        {system.userAcknowledgementStatus === 'acknowledged' && (
+                          <>
+                            <span>·</span>
+                            <span className="text-green-600 flex items-center gap-1">
+                              <CheckCircle className="h-3 w-3" />
+                              Acknowledged
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+                {index < filteredSystems.length - 1 && (
+                  <div className="h-px bg-border" />
+                )}
+              </div>
             ))}
-          </select>
-
-          {/* Quick Filters */}
-          <div className="flex gap-2">
-            <Button
-              variant={filters.assignedToMe ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilters({ ...filters, assignedToMe: !filters.assignedToMe })}
-              className="flex-1"
-            >
-              Assigned to me
-            </Button>
-            <Button
-              variant={filters.needsAcknowledgement ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilters({ ...filters, needsAcknowledgement: !filters.needsAcknowledgement })}
-              className="flex-1"
-            >
-              Needs ack
-            </Button>
           </div>
-        </div>
-      </Card>
+        )}
 
-      {/* Systems List */}
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin h-8 w-8 border-4 border-solid border-gray-900 border-r-transparent rounded-full" />
-        </div>
-      ) : systems.length === 0 ? (
-        <Card className="p-12 text-center">
-          <p className="text-muted-foreground mb-4">No systems found</p>
-          <Link href="/systems/new">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Create your first system
-            </Button>
-          </Link>
-        </Card>
-      ) : (
-        <div className="border rounded-lg overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Title</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Category</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Status</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Version</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Assigned</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Pending</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Your Status</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Updated</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {systems.map((system) => (
-                <tr key={system.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="py-3 px-4">
-                    <Link href={`/systems/${system.id}`} className="font-medium text-primary hover:underline">
-                      {system.title}
-                    </Link>
-                  </td>
-                  <td className="py-3 px-4">
-                    <Badge variant="secondary">{system.category}</Badge>
-                  </td>
-                  <td className="py-3 px-4">
-                    <Badge variant={statusColors[system.status] as any || 'secondary'}>
-                      {system.status}
-                    </Badge>
-                  </td>
-                  <td className="py-3 px-4 text-sm text-gray-600">
-                    v{system.version}
-                  </td>
-                  <td className="py-3 px-4 text-sm text-gray-600">
-                    {system.assignedUserCount}
-                  </td>
-                  <td className="py-3 px-4">
-                    {system.pendingAcknowledgements > 0 ? (
-                      <span className="text-sm text-amber-600 font-medium">
-                        {system.pendingAcknowledgements}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-gray-400">—</span>
-                    )}
-                  </td>
-                  <td className="py-3 px-4">
-                    {getAcknowledgementBadge(system.userAcknowledgementStatus)}
-                  </td>
-                  <td className="py-3 px-4 text-sm text-gray-600">
-                    {formatDate(system.updatedAt)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+        {/* Floating action button - bottom right */}
+        <button
+          onClick={() => router.push('/systems/new')}
+          className="fixed bottom-8 right-8 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-soft-lg hover:shadow-soft-xl transition-all hover:scale-105"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      </div>
     </div>
   )
 }
