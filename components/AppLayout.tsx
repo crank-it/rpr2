@@ -306,14 +306,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           />
         )}
 
-        {/* Mobile Sidebar */}
-        <aside
+        {/* Mobile Full-Screen Menu */}
+        <div
           className={`
-            fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-300 transform transition-transform duration-300 ease-in-out lg:hidden
-            ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+            fixed inset-0 z-50 bg-white flex flex-col lg:hidden transition-opacity duration-300 ease-in-out
+            ${isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
           `}
         >
-          <div className="flex h-16 items-center justify-between px-6">
+          {/* Header with close button */}
+          <div className="flex h-16 items-center justify-between px-6 border-b border-slate-200">
             <div className="flex flex-col">
               <div className="text-xl font-light tracking-wider text-gray-900" style={{ letterSpacing: '0.1em' }}>
                 RPR HAIRCARE
@@ -323,14 +324,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <Button
               variant="ghost"
               size="icon"
+              className="h-12 w-12"
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              <X className="h-5 w-5" />
+              <X className="h-6 w-6" />
             </Button>
           </div>
 
-          <nav className="flex-1 space-y-6 p-4">
-            <div className="space-y-1">
+          {/* Centered navigation */}
+          <nav className="flex-1 flex flex-col items-center justify-center px-6">
+            <div className="w-full max-w-sm space-y-2">
               {navigation.map((item) => {
                 const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
                 return (
@@ -338,49 +341,49 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     key={item.name}
                     href={item.href}
                     className={`
-                      flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all
+                      flex items-center justify-center gap-3 rounded-xl px-6 py-4 text-lg font-medium transition-all
                       ${isActive
                         ? 'bg-primary/10 text-foreground'
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                       }
                     `}
                   >
-                    <item.icon className="h-4 w-4" />
+                    <item.icon className="h-5 w-5" />
                     {item.name}
                   </Link>
                 )
               })}
-            </div>
 
-            <div className="border-t border-slate-300 pt-4 space-y-1">
-              {secondaryNavigation.map((item) => {
-                const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
-                const showPendingDot = item.name === 'User Management' && pendingUsersCount > 0
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={`
-                      flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all relative
-                      ${isActive
-                        ? 'bg-primary/10 text-foreground'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                      }
-                    `}
-                  >
-                    <div className="relative">
-                      <item.icon className="h-4 w-4" />
-                      {showPendingDot && (
-                        <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full animate-pulse" />
-                      )}
-                    </div>
-                    {item.name}
-                  </Link>
-                )
-              })}
+              <div className="border-t border-slate-200 pt-4 mt-4 space-y-2">
+                {secondaryNavigation.map((item) => {
+                  const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
+                  const showPendingDot = item.name === 'User Management' && pendingUsersCount > 0
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className={`
+                        flex items-center justify-center gap-3 rounded-xl px-6 py-4 text-lg font-medium transition-all relative
+                        ${isActive
+                          ? 'bg-primary/10 text-foreground'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }
+                      `}
+                    >
+                      <div className="relative">
+                        <item.icon className="h-5 w-5" />
+                        {showPendingDot && (
+                          <span className="absolute -top-1 -right-1 h-2.5 w-2.5 bg-red-500 rounded-full animate-pulse" />
+                        )}
+                      </div>
+                      {item.name}
+                    </Link>
+                  )
+                })}
+              </div>
             </div>
           </nav>
-        </aside>
+        </div>
 
         {/* Desktop Sidebar */}
         <aside className="hidden lg:flex lg:w-64 lg:flex-col border-r border-slate-300 bg-white">
