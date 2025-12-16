@@ -8,7 +8,6 @@ const isPublicRoute = createRouteMatcher([
   '/rejected',
   '/deactivated',
   '/api/webhooks(.*)',
-  '/(.*)', // Temporarily allow all routes
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
