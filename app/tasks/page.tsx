@@ -242,6 +242,15 @@ export default function TasksPage() {
             ))}
           </div>
         )}
+
+        {/* Floating action button - bottom right */}
+        <button
+          onClick={() => window.location.href = '/projects'}
+          className="fixed bottom-8 right-8 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-soft-lg hover:shadow-soft-xl transition-all hover:scale-105"
+          title="Tasks are created within projects"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
       </div>
     </div>
   )

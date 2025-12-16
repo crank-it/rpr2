@@ -166,6 +166,20 @@ export function CreateProjectModal({ isOpen, onClose, onProjectCreated, customer
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEditing ? "Edit Project" : "Create New Project"} size="lg">
       <form onSubmit={handleSubmit} className="space-y-6">
+        <Select
+          label="Project Type"
+          value={selectedCategoryId}
+          onChange={(e) => {
+            setSelectedCategoryId(e.target.value)
+            setCustomFieldValues({}) // Reset custom values when type changes
+          }}
+          options={[
+            { value: '', label: 'Select project type...' },
+            ...categories.map(c => ({ value: c.id, label: c.name }))
+          ]}
+          required
+        />
+
         <Input
           label="Project Title"
           placeholder="e.g., Summer Campaign 2024"
@@ -179,20 +193,6 @@ export function CreateProjectModal({ isOpen, onClose, onProjectCreated, customer
           placeholder="Describe the project objectives and deliverables..."
           value={formData.description}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          required
-        />
-
-        <Select
-          label="Project Type"
-          value={selectedCategoryId}
-          onChange={(e) => {
-            setSelectedCategoryId(e.target.value)
-            setCustomFieldValues({}) // Reset custom values when type changes
-          }}
-          options={[
-            { value: '', label: 'Select project type...' },
-            ...categories.map(c => ({ value: c.id, label: c.name }))
-          ]}
           required
         />
 
