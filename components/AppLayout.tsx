@@ -17,7 +17,8 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  CheckSquare
+  CheckSquare,
+  X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -155,6 +156,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [pendingUsersCount, setPendingUsersCount] = useState(0)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isNotificationOpen, setIsNotificationOpen] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false)
+  }, [pathname])
 
   // Fetch pending users count and create initial notification
   const fetchPendingCount = useCallback(async () => {
@@ -291,7 +298,91 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <UserSyncProvider>
       <div className="flex h-screen bg-gray-50">
-        {/* Sidebar */}
+        {/* Mobile Sidebar Overlay */}
+        {isMobileMenuOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+
+        {/* Mobile Sidebar */}
+        <aside
+          className={`
+            fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-300 transform transition-transform duration-300 ease-in-out lg:hidden
+            ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+          `}
+        >
+          <div className="flex h-16 items-center justify-between px-6">
+            <div className="flex flex-col">
+              <div className="text-xl font-light tracking-wider text-gray-900" style={{ letterSpacing: '0.1em' }}>
+                RPR HAIRCARE
+              </div>
+              <p className="text-xs text-gray-500 mt-0.5">Operations Hub</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+
+          <nav className="flex-1 space-y-6 p-4">
+            <div className="space-y-1">
+              {navigation.map((item) => {
+                const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={`
+                      flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all
+                      ${isActive
+                        ? 'bg-primary/10 text-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                      }
+                    `}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.name}
+                  </Link>
+                )
+              })}
+            </div>
+
+            <div className="border-t border-slate-300 pt-4 space-y-1">
+              {secondaryNavigation.map((item) => {
+                const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
+                const showPendingDot = item.name === 'User Management' && pendingUsersCount > 0
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={`
+                      flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all relative
+                      ${isActive
+                        ? 'bg-primary/10 text-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                      }
+                    `}
+                  >
+                    <div className="relative">
+                      <item.icon className="h-4 w-4" />
+                      {showPendingDot && (
+                        <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full animate-pulse" />
+                      )}
+                    </div>
+                    {item.name}
+                  </Link>
+                )
+              })}
+            </div>
+          </nav>
+        </aside>
+
+        {/* Desktop Sidebar */}
         <aside className="hidden lg:flex lg:w-64 lg:flex-col border-r border-slate-300 bg-white">
           <div className="flex h-16 items-center gap-3 px-6">
             <div className="flex flex-col">
@@ -379,7 +470,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Header */}
           <header className="flex h-16 items-center gap-4 border-b border-slate-300 bg-white px-6">
-            <Button variant="ghost" size="icon" className="lg:hidden">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              onClick={() => setIsMobileMenuOpen(true)}
+            >
               <Menu className="h-5 w-5" />
             </Button>
             <div className="flex-1" />
