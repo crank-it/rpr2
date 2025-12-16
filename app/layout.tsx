@@ -1,4 +1,3 @@
-import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Dosis, Lato } from "next/font/google";
 import "./globals.css";
@@ -35,15 +34,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider
-      signInFallbackRedirectUrl="/auth/callback"
-      signUpFallbackRedirectUrl="/sign-up/callback"
-    >
-      <html lang="en" suppressHydrationWarning>
-        <body className={`${dosis.variable} ${lato.variable} font-body antialiased`} suppressHydrationWarning>
-          <AppLayout>{children}</AppLayout>
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${dosis.variable} ${lato.variable} font-body antialiased`} suppressHydrationWarning>
+        <AppLayout>{children}</AppLayout>
+      </body>
+    </html>
   );
 }
