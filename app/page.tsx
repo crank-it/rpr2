@@ -22,6 +22,8 @@ interface DashboardStats {
     type: string
     status: string
     time: string
+    entityId: string | null
+    href: string | null
   }[]
 }
 
@@ -122,20 +124,37 @@ export default function DashboardPage() {
             <div className="space-y-0">
               {data.recentActivity.map((activity, index) => (
                 <div key={activity.id}>
-                  <div className="py-6">
-                    <div className="flex items-baseline justify-between gap-8">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-base font-medium text-foreground mb-1">
-                          {activity.title}
-                        </h3>
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                          <span>{activity.type}</span>
-                          <span>·</span>
-                          <span>{activity.time}</span>
+                  {activity.href ? (
+                    <Link href={activity.href} className="block py-6 -mx-4 px-4 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex items-baseline justify-between gap-8">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-base font-medium text-foreground mb-1">
+                            {activity.title}
+                          </h3>
+                          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                            <span>{activity.type}</span>
+                            <span>·</span>
+                            <span>{activity.time}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  ) : (
+                    <div className="py-6">
+                      <div className="flex items-baseline justify-between gap-8">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-base font-medium text-foreground mb-1">
+                            {activity.title}
+                          </h3>
+                          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                            <span>{activity.type}</span>
+                            <span>·</span>
+                            <span>{activity.time}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                   {index < data.recentActivity.length - 1 && (
                     <div className="h-px bg-border" />
                   )}

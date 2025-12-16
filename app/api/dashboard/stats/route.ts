@@ -66,19 +66,27 @@ export async function GET() {
       // Determine entity type and get status
       let entityType = 'Activity'
       let entityStatus = ''
+      let entityId: string | null = null
+      let href: string | null = null
 
       if (activity.project_id) {
         entityType = 'Project'
         entityStatus = statusMap[`project-${activity.project_id}`] || ''
+        entityId = activity.project_id
+        href = `/projects/${activity.project_id}`
       } else if (activity.campaign_id) {
         entityType = 'Campaign'
         entityStatus = statusMap[`campaign-${activity.campaign_id}`] || ''
+        entityId = activity.campaign_id
+        href = `/campaigns/${activity.campaign_id}`
       } else if (activity.customer_id) {
         entityType = 'Customer'
-        // Customers don't have status
+        entityId = activity.customer_id
+        href = `/customers/${activity.customer_id}`
       } else if (activity.asset_id) {
         entityType = 'Asset'
-        // Assets don't have status
+        entityId = activity.asset_id
+        href = `/assets/${activity.asset_id}`
       }
 
       return {
@@ -86,7 +94,9 @@ export async function GET() {
         title: activity.description || 'Activity',
         type: entityType,
         status: entityStatus,
-        time: getRelativeTime(new Date(activity.created_at))
+        time: getRelativeTime(new Date(activity.created_at)),
+        entityId,
+        href
       }
     })
 
