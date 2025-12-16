@@ -38,10 +38,10 @@ interface Project {
 }
 
 const getCustomerTypeVariant = (type: string) => {
-  const variants: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
+  const variants: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
     'SALON': 'default',
     'DISTRIBUTOR': 'secondary',
-    'CORPORATE': 'warning',
+    'CORPORATE': 'outline',
     'VIP': 'destructive'
   }
   return variants[type] || 'secondary'
@@ -205,7 +205,7 @@ export default function CustomerDetailPage() {
                         )}
                       </div>
                     </div>
-                    <Badge variant={project.status === 'COMPLETED' ? 'success' : project.status === 'IN_PROGRESS' ? 'default' : 'secondary'}>
+                    <Badge variant={project.status === 'COMPLETED' ? 'default' : project.status === 'IN_PROGRESS' ? 'default' : 'secondary'}>
                       {project.status.replace('_', ' ')}
                     </Badge>
                   </Link>
