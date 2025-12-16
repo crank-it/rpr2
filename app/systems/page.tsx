@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Plus, Search, CheckCircle, AlertCircle, RotateCw } from 'lucide-react'
+import { Filters } from '@/components/ui/filters'
 
 interface System {
   id: string
@@ -33,16 +34,24 @@ export default function SystemsPage() {
   const [systems, setSystems] = useState<System[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({
+    status: '',
+    category: '',
+    sortBy: '-updated_at'
+  })
 
   useEffect(() => {
     fetchSystems()
-  }, [])
+  }, [filterValues])
 
   const fetchSystems = async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams()
-      params.append('sort', '-updated_at')
+
+      if (filterValues.status) params.append('status', filterValues.status)
+      if (filterValues.category) params.append('category', filterValues.category)
+      if (filterValues.sortBy) params.append('sort', filterValues.sortBy)
 
       const response = await fetch(`/api/systems?${params}`)
       if (response.ok) {
@@ -104,6 +113,54 @@ export default function SystemsPage() {
     return date.toLocaleDateString()
   }
 
+  // Get unique categories for filter
+  const categories = Array.from(new Set(systems.map(s => s.category)))
+
+  const filterConfig = [
+    {
+      key: 'status',
+      label: 'Status',
+      type: 'select' as const,
+      options: [
+        { label: 'Draft', value: 'Draft' },
+        { label: 'Start', value: 'Start' },
+        { label: 'Approve', value: 'Approve' },
+        { label: 'Need Review', value: 'Need Review' }
+      ]
+    },
+    {
+      key: 'category',
+      label: 'Category',
+      type: 'select' as const,
+      options: categories.map(cat => ({ label: cat, value: cat }))
+    },
+    {
+      key: 'sortBy',
+      label: 'Sort By',
+      type: 'select' as const,
+      options: [
+        { label: 'Recently Updated', value: '-updated_at' },
+        { label: 'Oldest Updated', value: 'updated_at' },
+        { label: 'Recently Created', value: '-created_at' },
+        { label: 'Oldest Created', value: 'created_at' },
+        { label: 'Title (A-Z)', value: 'title' },
+        { label: 'Title (Z-A)', value: '-title' }
+      ]
+    }
+  ]
+
+  const handleFilterChange = (key: string, value: string) => {
+    setFilterValues(prev => ({ ...prev, [key]: value }))
+  }
+
+  const handleClearFilters = () => {
+    setFilterValues({
+      status: '',
+      category: '',
+      sortBy: '-updated_at'
+    })
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Centered container with max width */}
@@ -119,16 +176,26 @@ export default function SystemsPage() {
           </p>
         </div>
 
-        {/* Search bar - Minimal */}
-        <div className="relative mb-16">
-          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search"
-            className="w-full border-0 border-b border-border bg-transparent py-3 pl-12 pr-4 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        {/* Search bar and Filters - Minimal */}
+        <div className="mb-16">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search"
+              className="w-full border-0 border-b border-border bg-transparent py-3 pl-12 pr-20 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <div className="absolute right-0 top-1/2 -translate-y-1/2">
+              <Filters
+                filters={filterConfig}
+                values={filterValues}
+                onChange={handleFilterChange}
+                onClear={handleClearFilters}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Systems List */}
