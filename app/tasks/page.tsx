@@ -5,6 +5,7 @@ import { Search, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { formatDate } from '@/lib/utils'
 import { Filters } from '@/components/ui/filters'
+import { TaskModal } from '@/components/tasks/TaskModal'
 
 interface Task {
   id: string
@@ -24,14 +25,23 @@ interface Task {
   }
 }
 
+interface Project {
+  id: string
+  title: string
+}
+
 const formatStatus = (status: string) => {
   return status.replace('_', ' ').charAt(0) + status.replace('_', ' ').slice(1).toLowerCase()
 }
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
+  const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false)
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('')
   const [filterValues, setFilterValues] = useState<Record<string, string>>({
     status: '',
     sortBy: '-updated_at'
@@ -52,9 +62,53 @@ export default function TasksPage() {
     setLoading(false)
   }
 
+  const fetchProjects = async () => {
+    try {
+      const response = await fetch('/api/projects')
+      if (response.ok) {
+        const data = await response.json()
+        setProjects(data.map((p: any) => ({ id: p.id, title: p.title })))
+      }
+    } catch (error) {
+      console.error('Error fetching projects:', error)
+    }
+  }
+
   useEffect(() => {
     fetchTasks()
+    fetchProjects()
   }, [])
+
+  const handleSaveTask = async (taskData: any) => {
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(taskData)
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create task')
+      }
+
+      await fetchTasks()
+      setIsTaskModalOpen(false)
+      setSelectedProjectId('')
+    } catch (error) {
+      console.error('Error creating task:', error)
+      alert('Failed to create task')
+    }
+  }
+
+  const handleOpenTaskModal = () => {
+    setIsProjectSelectorOpen(true)
+  }
+
+  const handleProjectSelected = (projectId: string) => {
+    setSelectedProjectId(projectId)
+    setIsProjectSelectorOpen(false)
+    setIsTaskModalOpen(true)
+  }
 
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -245,13 +299,65 @@ export default function TasksPage() {
 
         {/* Floating action button - bottom right */}
         <button
-          onClick={() => window.location.href = '/projects'}
+          onClick={handleOpenTaskModal}
           className="fixed bottom-8 right-8 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-soft-lg hover:shadow-soft-xl transition-all hover:scale-105"
-          title="Tasks are created within projects"
         >
           <Plus className="h-6 w-6" />
         </button>
       </div>
+
+      {/* Project Selector Modal */}
+      {isProjectSelectorOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-background w-full max-w-md mx-4 rounded-lg shadow-lg">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <h2 className="text-lg font-medium text-foreground">
+                Select Project
+              </h2>
+              <button
+                onClick={() => setIsProjectSelectorOpen(false)}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-4 max-h-96 overflow-y-auto">
+              {projects.length === 0 ? (
+                <p className="text-center py-8 text-muted-foreground">
+                  No projects available. Create a project first.
+                </p>
+              ) : (
+                <div className="space-y-1">
+                  {projects.map((project) => (
+                    <button
+                      key={project.id}
+                      onClick={() => handleProjectSelected(project.id)}
+                      className="w-full text-left px-4 py-3 rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <p className="text-sm font-medium text-foreground">
+                        {project.title}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Task Modal */}
+      {selectedProjectId && (
+        <TaskModal
+          isOpen={isTaskModalOpen}
+          onClose={() => {
+            setIsTaskModalOpen(false)
+            setSelectedProjectId('')
+          }}
+          onSave={handleSaveTask}
+          projectId={selectedProjectId}
+        />
+      )}
     </div>
   )
 }
