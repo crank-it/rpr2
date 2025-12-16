@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useUser } from "@clerk/nextjs";
 import { Crown, Shield, User as UserIcon, ShieldAlert } from "lucide-react";
 import { User } from "@/lib/supabase";
 
@@ -12,8 +11,10 @@ const roleConfig = {
   user: { label: "User", icon: UserIcon },
 };
 
+// Temporary placeholder - replace with actual auth when Clerk is re-enabled
+const CURRENT_USER_ID = 'User';
+
 export default function UserManagementPage() {
-  const { user: clerkUser } = useUser();
   const [users, setUsers] = useState<User[]>([]);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,11 +29,12 @@ export default function UserManagementPage() {
       const response = await fetch("/api/users");
       const data = await response.json();
 
-      if (data.users) {
-        setUsers(data.users);
-        const currentUser = data.users.find((u: User) => u.id === clerkUser?.id);
-        setCurrentUserRole(currentUser?.role || null);
-      }
+      // Handle both array and {users: []} response formats
+      const usersList = Array.isArray(data) ? data : (data.users || []);
+      setUsers(usersList);
+
+      const currentUser = usersList.find((u: User) => u.id === CURRENT_USER_ID);
+      setCurrentUserRole(currentUser?.role || 'superadmin'); // Default to superadmin for demo
     } catch (error) {
       console.error("Failed to fetch users:", error);
     } finally {
@@ -199,7 +201,7 @@ export default function UserManagementPage() {
           </h2>
           <div className="space-y-0">
             {activeUsers.map((user, index) => {
-              const isCurrentUser = user.id === clerkUser?.id;
+              const isCurrentUser = user.id === CURRENT_USER_ID;
               const isSuperadmin = user.role === "superadmin";
               const canModify = !isCurrentUser && (currentUserRole === "superadmin" || !isSuperadmin);
               const config = roleConfig[user.role as keyof typeof roleConfig] || roleConfig.user;
