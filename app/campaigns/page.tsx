@@ -121,22 +121,22 @@ export default function CampaignsPage() {
 
   const getStatusVariant = (status: string) => {
     const s = status?.toUpperCase()
-    const variants: Record<string, 'default' | 'secondary' | 'success' | 'warning'> = {
+    const variants: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
       'DRAFT': 'secondary',
-      'SCHEDULED': 'warning',
+      'SCHEDULED': 'outline',
       'ACTIVE': 'default',
-      'COMPLETED': 'success',
+      'COMPLETED': 'default',
       'PAUSED': 'secondary',
-      'PLANNING': 'warning'
+      'PLANNING': 'outline'
     }
     return variants[s] || 'secondary'
   }
 
   const getAudienceBadgeVariant = (audience: string) => {
     const a = audience?.toUpperCase()
-    const variants: Record<string, 'default' | 'secondary' | 'warning'> = {
+    const variants: Record<string, 'default' | 'secondary' | 'outline'> = {
       'B2B': 'default',
-      'B2C': 'warning',
+      'B2C': 'outline',
       'BOTH': 'secondary'
     }
     return variants[a] || 'secondary'
