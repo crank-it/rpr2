@@ -66,7 +66,7 @@ export function MultiSelect({
   }
 
   return (
-    <div className={cn('w-full', className)} ref={containerRef}>
+    <div className={cn('w-full relative', className)} ref={containerRef}>
       {label && (
         <label className="block text-sm font-medium text-foreground mb-2">
           {label}
@@ -105,7 +105,7 @@ export function MultiSelect({
         )}
 
         <svg
-          className={cn('w-4 h-4 ml-auto text-muted-foreground transition-transform', isOpen && 'rotate-180')}
+          className={cn('w-4 h-4 ml-auto flex-shrink-0 text-muted-foreground transition-transform', isOpen && 'rotate-180')}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -115,7 +115,7 @@ export function MultiSelect({
       </div>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full max-h-60 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
+        <div className="absolute z-50 top-full mt-1 left-0 right-0 max-h-60 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
           <div className="p-2 border-b border-border">
             <input
               type="text"

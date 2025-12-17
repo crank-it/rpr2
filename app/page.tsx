@@ -9,6 +9,8 @@ interface ActivityItem {
   activityType: 'activity' | 'comment'
   title: string
   type: string
+  action?: string
+  userName?: string | null
   time: string
   timestamp: string
   linkHref?: string | null
@@ -214,17 +216,23 @@ export default function ActivityFeedPage() {
                             className="group"
                           >
                             <h3 className="text-base font-medium text-foreground mb-1 group-hover:text-primary transition-colors flex items-center gap-2">
-                              {activity.title}
+                              "{activity.title}" was {activity.action || 'updated'}
                               <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </h3>
                           </Link>
                         ) : (
                           <h3 className="text-base font-medium text-foreground mb-1">
-                            {activity.title}
+                            "{activity.title}" was {activity.action || 'updated'}
                           </h3>
                         )}
                         <div className="flex items-center gap-3 text-sm text-muted-foreground">
                           <span>{activity.type}</span>
+                          {activity.userName && (
+                            <>
+                              <span>·</span>
+                              <span>{activity.userName}</span>
+                            </>
+                          )}
                           <span>·</span>
                           <span>{activity.time}</span>
                         </div>

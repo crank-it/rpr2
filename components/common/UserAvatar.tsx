@@ -23,10 +23,10 @@ export function UserAvatar({ userId, size = 'md', showName = false }: UserAvatar
   useEffect(() => {
     async function fetchUser() {
       try {
-        const response = await fetch(`/api/users?id=${userId}`)
+        const response = await fetch(`/api/users/${userId}/public`)
         if (response.ok) {
-          const users = await response.json()
-          setUser(users[0] || null)
+          const userData = await response.json()
+          setUser(userData)
         }
       } catch (error) {
         console.error('Failed to fetch user:', error)

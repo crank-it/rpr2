@@ -43,7 +43,6 @@ export async function GET(request: Request) {
       assigneeIds: t.assignee_ids || [],
       targetDate: t.target_date,
       status: t.status,
-      priority: t.priority || 'MEDIUM',
       createdAt: t.created_at,
       updatedAt: t.updated_at,
       completedAt: t.completed_at,
@@ -64,25 +63,42 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
 
+    // Validate required fields
+    if (!body.projectId) {
+      return NextResponse.json(
+        { error: 'Project ID is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!body.title) {
+      return NextResponse.json(
+        { error: 'Title is required' },
+        { status: 400 }
+      )
+    }
+
+    const insertData = {
+      project_id: body.projectId,
+      title: body.title,
+      details: body.details || null,
+      attachment: body.attachment || null,
+      assignee_ids: body.assigneeIds || [],
+      target_date: body.targetDate || null,
+      status: body.status || 'DRAFT'
+    }
+
     const { data: task, error } = await supabase
       .from('tasks')
-      .insert({
-        project_id: body.projectId,
-        title: body.title,
-        details: body.details || null,
-        attachment: body.attachment || null,
-        assignee_ids: body.assigneeIds || [],
-        target_date: body.targetDate || null,
-        status: body.status || 'DRAFT',
-        priority: body.priority || 'MEDIUM'
-      })
+      .insert(insertData)
       .select()
       .single()
 
     if (error) {
       console.error('Failed to create task:', error)
+      console.error('Insert data was:', insertData)
       return NextResponse.json(
-        { error: 'Failed to create task' },
+        { error: 'Failed to create task', details: error.message },
         { status: 500 }
       )
     }
@@ -96,7 +112,6 @@ export async function POST(request: Request) {
       assigneeIds: task.assignee_ids || [],
       targetDate: task.target_date,
       status: task.status,
-      priority: task.priority || 'MEDIUM',
       createdAt: task.created_at,
       updatedAt: task.updated_at,
       completedAt: task.completed_at,

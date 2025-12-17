@@ -23,34 +23,59 @@ interface Task {
   }
 }
 
+interface User {
+  id: string
+  name: string
+}
+
 const formatStatus = (status: string) => {
   return status.replace('_', ' ').charAt(0) + status.replace('_', ' ').slice(1).toLowerCase()
 }
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([])
+  const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
 
-  const fetchTasks = async () => {
+  const fetchData = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/tasks')
-      if (!response.ok) {
+      const [tasksRes, usersRes] = await Promise.all([
+        fetch('/api/tasks'),
+        fetch('/api/users/active')
+      ])
+
+      if (!tasksRes.ok) {
         throw new Error('Failed to fetch tasks')
       }
-      const data = await response.json()
-      setTasks(data)
+      const tasksData = await tasksRes.json()
+      setTasks(tasksData)
+
+      if (usersRes.ok) {
+        const usersData = await usersRes.json()
+        setUsers(usersData.map((u: any) => ({ id: u.id, name: u.name || u.email })))
+      }
     } catch (error) {
-      console.error('Error fetching tasks:', error)
+      console.error('Error fetching data:', error)
     }
     setLoading(false)
   }
 
   useEffect(() => {
-    fetchTasks()
+    fetchData()
   }, [])
+
+  const getAssigneeNames = (assigneeIds: string[]) => {
+    if (!assigneeIds || assigneeIds.length === 0) return 'Unassigned'
+    const names = assigneeIds
+      .map(id => users.find(u => u.id === id)?.name)
+      .filter(Boolean)
+    if (names.length === 0) return 'Unassigned'
+    if (names.length <= 2) return names.join(', ')
+    return `${names[0]}, ${names[1]} +${names.length - 2}`
+  }
 
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -198,9 +223,7 @@ export default function TasksPage() {
                                   <span>·</span>
                                 </>
                               )}
-                              {task.assigneeIds && task.assigneeIds.length > 0 && (
-                                <span>{task.assigneeIds.length} assigned</span>
-                              )}
+                              <span>{getAssigneeNames(task.assigneeIds)}</span>
                             </div>
                           </div>
                         </div>

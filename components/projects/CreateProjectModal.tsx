@@ -22,32 +22,63 @@ export function CreateProjectModal({ isOpen, onClose, onProjectCreated, customer
   const [loading, setLoading] = useState(false)
   const [users, setUsers] = useState<Array<{ id: string; name: string }>>([])
   const [categories, setCategories] = useState<Array<{ id: string; name: string; customFields?: any[] }>>([])
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(initialData?.categoryIds?.[0] || '')
-  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string | string[]>>(initialData?.customFieldValues || {})
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('')
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string | string[]>>({})
   const [categoryCustomFields, setCategoryCustomFields] = useState<any[]>([])
   const [formData, setFormData] = useState({
-    title: initialData?.title || '',
-    description: initialData?.description || '',
-    status: initialData?.status || 'DRAFT',
-    priority: initialData?.priority || 'MEDIUM',
-    customerId: initialData?.customerId || initialData?.customer?.id || '',
-    dueDate: initialData?.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : '',
-    assignees: initialData?.assignees || [],
-    assets: initialData?.assets || []
+    title: '',
+    description: '',
+    status: 'DRAFT',
+    priority: 'MEDIUM',
+    customerId: '',
+    dueDate: '',
+    assignees: [] as string[],
+    assets: [] as Array<{ label: string; url: string }>
   })
+
+  // Reset form when modal opens or initialData changes
+  useEffect(() => {
+    if (isOpen) {
+      if (initialData) {
+        setFormData({
+          title: initialData.title || '',
+          description: initialData.description || '',
+          status: initialData.status || 'DRAFT',
+          priority: initialData.priority || 'MEDIUM',
+          customerId: initialData.customerId || initialData.customer?.id || '',
+          dueDate: initialData.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : '',
+          assignees: initialData.assignees || [],
+          assets: initialData.assets || []
+        })
+        setSelectedCategoryId(initialData.categoryIds?.[0] || '')
+        setCustomFieldValues(initialData.customFieldValues || {})
+      } else {
+        // Reset to defaults for new project
+        setFormData({
+          title: '',
+          description: '',
+          status: 'DRAFT',
+          priority: 'MEDIUM',
+          customerId: '',
+          dueDate: '',
+          assignees: [],
+          assets: []
+        })
+        setSelectedCategoryId('')
+        setCustomFieldValues({})
+      }
+    }
+  }, [isOpen, initialData])
 
   // Fetch users and categories
   useEffect(() => {
     async function fetchData() {
       try {
         // Fetch active users
-        const usersRes = await fetch('/api/users')
+        const usersRes = await fetch('/api/users/active')
         if (usersRes.ok) {
           const usersData = await usersRes.json()
-          const activeUsers = usersData
-            .filter((u: any) => u.status === 'active')
-            .map((u: any) => ({ id: u.id, name: u.name || u.email }))
-          setUsers(activeUsers)
+          setUsers(usersData.map((u: any) => ({ id: u.id, name: u.name || u.email })))
         }
 
         // Fetch categories

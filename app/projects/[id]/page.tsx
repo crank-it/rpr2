@@ -105,13 +105,14 @@ export default function ProjectDetailPage() {
   }
 
   const fetchUsers = async () => {
-    const { data } = await supabase
-      .from('users')
-      .select('id, name, email')
-      .eq('status', 'active')
-      .order('name')
-    if (data) {
-      setUsers(data.map(u => ({ id: u.id, name: u.name || u.email || 'Unknown' })))
+    try {
+      const response = await fetch('/api/users/active')
+      if (response.ok) {
+        const data = await response.json()
+        setUsers(data.map((u: any) => ({ id: u.id, name: u.name || u.email || 'Unknown' })))
+      }
+    } catch (error) {
+      console.error('Failed to fetch users:', error)
     }
   }
 
@@ -482,12 +483,6 @@ export default function ProjectDetailPage() {
                             <span>{formatStatus(task.status)}</span>
                             <span>·</span>
                             <span>{task.targetDate ? formatDate(task.targetDate) : 'No due date'}</span>
-                            {task.priority && (
-                              <>
-                                <span>·</span>
-                                <span>{task.priority.charAt(0) + task.priority.slice(1).toLowerCase()}</span>
-                              </>
-                            )}
                             {task.attachment && (
                               <>
                                 <span>·</span>

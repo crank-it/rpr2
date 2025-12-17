@@ -48,7 +48,7 @@ export default function ProjectsPage() {
       const [projectsRes, customersRes, usersRes] = await Promise.all([
         fetch('/api/projects'),
         fetch('/api/customers'),
-        fetch('/api/users')
+        fetch('/api/users/active')
       ])
 
       if (!projectsRes.ok) {
@@ -79,27 +79,8 @@ export default function ProjectsPage() {
   }, [])
 
   const handleProjectCreated = async (newProject: any) => {
-    try {
-      const response = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: newProject.title || newProject.name,
-          description: newProject.description || null,
-          status: newProject.status || 'DRAFT',
-          priority: newProject.priority || 'MEDIUM',
-          dueDate: newProject.dueDate || newProject.due_date || null,
-          customerId: newProject.customerId || newProject.customer_id || null
-        })
-      })
-      if (!response.ok) {
-        throw new Error('Failed to create project')
-      }
-      const data = await response.json()
-      setProjects([data, ...projects])
-    } catch (error) {
-      console.error('Error creating project:', error)
-    }
+    // The modal already created the project via API, just update local state
+    setProjects([newProject, ...projects])
     setIsCreateModalOpen(false)
   }
 

@@ -40,16 +40,24 @@ export async function GET() {
       ...comments.filter(c => c.entity_type === 'CUSTOMER').map(c => c.entity_id)
     ]
 
-    // Fetch entity details
-    const [projectsData, campaignsData, customersData] = await Promise.all([
+    // Collect user IDs from activities (deduplicated)
+    const userIds = [...new Set(
+      activities.filter(a => a.performed_by).map(a => a.performed_by)
+    )]
+
+    // Fetch entity details and users
+    const [projectsData, campaignsData, customersData, usersData] = await Promise.all([
       projectIds.length > 0
-        ? supabase.from('projects').select('id, title, status').in('id', projectIds)
+        ? supabase.from('projects').select('id, title, status').in('id', [...new Set(projectIds)])
         : { data: [] },
       campaignIds.length > 0
-        ? supabase.from('campaigns').select('id, name, status').in('id', campaignIds)
+        ? supabase.from('campaigns').select('id, name, status').in('id', [...new Set(campaignIds)])
         : { data: [] },
       customerIds.length > 0
-        ? supabase.from('customers').select('id, name').in('id', customerIds)
+        ? supabase.from('customers').select('id, name').in('id', [...new Set(customerIds)])
+        : { data: [] },
+      userIds.length > 0
+        ? supabase.from('users').select('id, name, email').in('id', userIds)
         : { data: [] }
     ])
 
@@ -57,10 +65,12 @@ export async function GET() {
     const projectMap: Record<string, any> = {}
     const campaignMap: Record<string, any> = {}
     const customerMap: Record<string, any> = {}
+    const userMap: Record<string, any> = {}
 
     projectsData.data?.forEach(p => { projectMap[p.id] = p })
     campaignsData.data?.forEach(c => { campaignMap[c.id] = c })
     customersData.data?.forEach(c => { customerMap[c.id] = c })
+    usersData.data?.forEach(u => { userMap[u.id] = u })
 
     // Format activities
     const formattedActivities = activities.map((activity) => {
@@ -89,11 +99,27 @@ export async function GET() {
         linkHref = `/customers/${activity.customer_id}`
       }
 
+      // Get user name
+      const user = activity.performed_by ? userMap[activity.performed_by] : null
+      const userName = user?.name || user?.email || null
+
+      // Parse action from activity type (e.g., "project_created" -> "created")
+      const actionType = activity.type || ''
+      let action = 'updated'
+      if (actionType.includes('created')) action = 'created'
+      else if (actionType.includes('deleted')) action = 'deleted'
+      else if (actionType.includes('updated') || actionType.includes('edited')) action = 'edited'
+      else if (actionType.includes('completed')) action = 'completed'
+      else if (actionType.includes('assigned')) action = 'assigned'
+      else if (actionType.includes('status')) action = 'status changed'
+
       return {
         id: `activity-${activity.id}`,
         activityType: 'activity',
         title: entityName,
         type: entityType,
+        action: action,
+        userName: userName,
         description: activity.description,
         time: getRelativeTime(new Date(activity.created_at)),
         timestamp: activity.created_at,

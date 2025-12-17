@@ -1,15 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { currentUser } from '@clerk/nextjs/server'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-
-// Temporarily disabled - no authentication
-function getCurrentUserName() {
-  return 'User'
-}
 
 export async function GET(request: Request) {
   try {
@@ -73,7 +69,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const performedBy = await getCurrentUserName()
+    const user = await currentUser()
+    const performedBy = user?.id || null
 
     const { data: project, error } = await supabase
       .from('projects')

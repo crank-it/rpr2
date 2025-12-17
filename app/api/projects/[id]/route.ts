@@ -1,14 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { currentUser } from '@clerk/nextjs/server'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-
-function getCurrentUserName() {
-  return 'User'
-}
 
 export async function GET(
   request: Request,
@@ -80,7 +77,8 @@ export async function PATCH(
   try {
     const { id } = await params
     const body = await request.json()
-    const performedBy = await getCurrentUserName()
+    const user = await currentUser()
+    const performedBy = user?.id || null
 
     // Fetch existing project to compare changes
     const { data: existingProject } = await supabase
@@ -137,7 +135,7 @@ export async function PATCH(
     }
 
     // Log detailed activities for each changed field
-    const activities: { type: string; description: string; project_id: string; performed_by: string }[] = []
+    const activities: { type: string; description: string; project_id: string; performed_by: string | null }[] = []
     const projectTitle = project.title
 
     if (existingProject) {
