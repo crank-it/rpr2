@@ -1,6 +1,6 @@
 "use client";
 
-import { SignUp, useUser } from "@clerk/nextjs";
+import { SignUp, useUser, useClerk } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Shield, User, Check } from "lucide-react";
@@ -22,11 +22,17 @@ const roleOptions = [
 
 export default function SignUpPage() {
   const { user, isLoaded } = useUser();
+  const { signOut } = useClerk();
   const router = useRouter();
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [showSignUp, setShowSignUp] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+
+  const handleUseDifferentAccount = async () => {
+    localStorage.removeItem("signupRequestedRole");
+    await signOut({ redirectUrl: "/sign-in" });
+  };
 
   useEffect(() => {
     // Check if role already selected (user came back from OAuth)
@@ -92,9 +98,40 @@ export default function SignUpPage() {
             <h2 className="text-lg font-semibold text-gray-900 mb-2">
               Select Your Role
             </h2>
-            <p className="text-sm text-gray-500 mb-6">
+            <p className="text-sm text-gray-500 mb-4">
               Choose the role that best describes your position. An admin will review your request.
             </p>
+
+            {/* Show signed-in account if user is already authenticated */}
+            {user && (
+              <div className="mb-6 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {user.imageUrl ? (
+                      <img
+                        src={user.imageUrl}
+                        alt={user.fullName || "User"}
+                        className="h-8 w-8 rounded-full"
+                      />
+                    ) : (
+                      <div className="h-8 w-8 rounded-full bg-teal-600 flex items-center justify-center text-white text-sm font-medium">
+                        {user.fullName?.charAt(0) || user.emailAddresses[0]?.emailAddress?.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{user.fullName}</p>
+                      <p className="text-xs text-gray-500">{user.emailAddresses[0]?.emailAddress}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleUseDifferentAccount}
+                    className="text-xs text-gray-500 hover:text-gray-700 hover:underline"
+                  >
+                    Switch
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-3">
               {roleOptions.map((role) => (

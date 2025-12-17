@@ -18,13 +18,15 @@ import {
   XCircle,
   Clock,
   CheckSquare,
-  X
+  X,
+  LogOut
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { BugReportModal } from '@/components/BugReportModal'
 import { UserSyncProvider } from '@/components/UserSyncProvider'
 import { supabase } from '@/lib/supabase'
+import { useUser, useClerk } from '@clerk/nextjs'
 
 interface Notification {
   id: string
@@ -144,10 +146,84 @@ function NotificationDropdown({
   )
 }
 
-// UserMenu temporarily disabled - no authentication
-// function UserMenu() {
-//   return null
-// }
+function UserMenu() {
+  const { user } = useUser()
+  const { signOut } = useClerk()
+  const [isOpen, setIsOpen] = useState(false)
+
+  if (!user) return null
+
+  const initials = user.fullName
+    ? user.fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    : user.emailAddresses[0]?.emailAddress?.charAt(0).toUpperCase() || '?'
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 rounded-full hover:bg-gray-100 p-1 transition-colors"
+      >
+        {user.imageUrl ? (
+          <img
+            src={user.imageUrl}
+            alt={user.fullName || 'User'}
+            className="h-8 w-8 rounded-full object-cover"
+          />
+        ) : (
+          <div className="h-8 w-8 rounded-full bg-teal-600 flex items-center justify-center text-white text-sm font-medium">
+            {initials}
+          </div>
+        )}
+      </button>
+
+      {isOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setIsOpen(false)}
+          />
+          <div className="absolute right-0 mt-2 w-64 rounded-lg bg-white shadow-lg border z-50">
+            <div className="px-4 py-3 border-b">
+              <div className="flex items-center gap-3">
+                {user.imageUrl ? (
+                  <img
+                    src={user.imageUrl}
+                    alt={user.fullName || 'User'}
+                    className="h-10 w-10 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="h-10 w-10 rounded-full bg-teal-600 flex items-center justify-center text-white font-medium">
+                    {initials}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {user.fullName || 'User'}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {user.emailAddresses[0]?.emailAddress}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="py-1">
+              <button
+                onClick={() => {
+                  setIsOpen(false)
+                  signOut({ redirectUrl: '/sign-in' })
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <LogOut className="h-4 w-4 text-gray-500" />
+                Sign out
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -517,7 +593,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               )}
             </div>
 
-            {/* <UserMenu /> */}
+            <UserMenu />
           </header>
 
           {/* Page Content */}

@@ -2,16 +2,57 @@
 
 import { useUser, useClerk } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Clock, LogOut } from "lucide-react";
 
 export default function PendingPage() {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
   const router = useRouter();
+  const [isValidPending, setIsValidPending] = useState(false);
 
-  // Check status every 5 seconds
+  // Initial check when page loads - verify user actually exists in database
   useEffect(() => {
+    if (!isLoaded) return;
+
+    // If no user is signed in, redirect to sign-in
+    if (!user) {
+      router.replace("/sign-in");
+      return;
+    }
+
+    const checkInitialStatus = async () => {
+      try {
+        const response = await fetch("/api/users/check-status");
+        const data = await response.json();
+
+        if (data.status === "not_found") {
+          // User doesn't exist in database - redirect to sign-up to create account
+          router.replace("/sign-up");
+        } else if (data.status === "active") {
+          router.replace("/");
+        } else if (data.status === "rejected") {
+          router.replace("/rejected");
+        } else if (data.status === "deactivated") {
+          router.replace("/deactivated");
+        } else if (data.status === "pending") {
+          // User is genuinely pending - show the page
+          setIsValidPending(true);
+        }
+      } catch (error) {
+        console.error("Initial status check failed:", error);
+        // On error, redirect to sign-in for safety
+        router.replace("/sign-in");
+      }
+    };
+
+    checkInitialStatus();
+  }, [isLoaded, user, router]);
+
+  // Check status every 5 seconds (only if user is valid pending)
+  useEffect(() => {
+    if (!isValidPending) return;
+
     const interval = setInterval(async () => {
       try {
         const response = await fetch("/api/users/check-status");
@@ -21,6 +62,9 @@ export default function PendingPage() {
           router.replace("/");
         } else if (data.status === "rejected") {
           router.replace("/rejected");
+        } else if (data.status === "not_found") {
+          // User was deleted from database
+          router.replace("/sign-up");
         }
       } catch (error) {
         console.error("Status check failed:", error);
@@ -28,7 +72,19 @@ export default function PendingPage() {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [router]);
+  }, [isValidPending, router]);
+
+  // Show loading while checking status
+  if (!isLoaded || !isValidPending) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin h-8 w-8 border-4 border-teal-600 rounded-full border-t-transparent" />
+          <span className="text-gray-600">Checking account status...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">

@@ -83,6 +83,11 @@ export default function AuthCallback() {
     router.replace("/sign-up");
   };
 
+  const handleUseDifferentAccount = async () => {
+    // Sign out and redirect to sign-in to try a different account
+    await signOut({ redirectUrl: "/sign-in" });
+  };
+
   if (noAccount) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50 p-4">
@@ -95,15 +100,31 @@ export default function AuthCallback() {
             </div>
           </div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">No Account Found</h2>
+
+          {user && (
+            <p className="text-sm text-gray-500 mb-4">
+              Signed in as: {user.emailAddresses[0]?.emailAddress}
+            </p>
+          )}
+
           <p className="text-gray-600 mb-6">
-            It looks like you don't have an account yet. Please sign up and select a role to create your account.
+            This account doesn't exist in our system yet. Create an account or try a different one.
           </p>
-          <button
-            onClick={handleGoToSignUp}
-            className="w-full bg-teal-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-teal-700 transition-colors"
-          >
-            Go to Sign Up
-          </button>
+
+          <div className="space-y-3">
+            <button
+              onClick={handleGoToSignUp}
+              className="w-full bg-teal-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-teal-700 transition-colors"
+            >
+              Create Account
+            </button>
+            <button
+              onClick={handleUseDifferentAccount}
+              className="w-full bg-gray-100 text-gray-700 py-2.5 px-4 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+            >
+              Use Different Account
+            </button>
+          </div>
         </div>
       </div>
     );

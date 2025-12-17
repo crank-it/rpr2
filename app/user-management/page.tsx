@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
-import { Crown, Shield, User as UserIcon, ShieldAlert } from "lucide-react";
+import { Crown, Shield, User as UserIcon, ShieldAlert, ChevronDown } from "lucide-react";
 import { User } from "@/lib/supabase";
 
 // Role configuration
@@ -18,6 +18,7 @@ export default function UserManagementPage() {
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [isRejectedExpanded, setIsRejectedExpanded] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -106,6 +107,7 @@ export default function UserManagementPage() {
 
   const pendingUsers = users.filter((u) => u.status === "pending" && u.role !== "superadmin");
   const activeUsers = users.filter((u) => (u.status === "active" || u.status === "deactivated") && u.role !== "superadmin");
+  const rejectedUsers = users.filter((u) => u.status === "rejected" && u.role !== "superadmin");
 
   const canManageUsers = currentUserRole === "superadmin" || currentUserRole === "admin";
 
@@ -165,12 +167,27 @@ export default function UserManagementPage() {
                           <span>·</span>
                           <span>{new Date(user.created_at).toLocaleDateString()}</span>
                         </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-xs text-muted-foreground">Wants:</span>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                            user.role === "admin"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-gray-100 text-gray-700"
+                          }`}>
+                            {user.role === "admin" ? (
+                              <Shield className="h-3 w-3" />
+                            ) : (
+                              <UserIcon className="h-3 w-3" />
+                            )}
+                            {roleConfig[user.role as keyof typeof roleConfig]?.label || user.role}
+                          </span>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleApprove(user.id)}
                           disabled={actionLoading === user.id}
-                          className="text-sm text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
+                          className="text-sm text-green-600 hover:text-green-700 transition-colors disabled:opacity-50"
                         >
                           Approve
                         </button>
@@ -178,7 +195,7 @@ export default function UserManagementPage() {
                         <button
                           onClick={() => handleReject(user.id)}
                           disabled={actionLoading === user.id}
-                          className="text-sm text-destructive hover:text-destructive/80 transition-colors disabled:opacity-50"
+                          className="text-sm text-red-600 hover:text-red-700 transition-colors disabled:opacity-50"
                         >
                           Reject
                         </button>
@@ -254,6 +271,65 @@ export default function UserManagementPage() {
             })}
           </div>
         </div>
+
+        {/* Rejected Users - Collapsible */}
+        {rejectedUsers.length > 0 && (
+          <div className="mt-20 pt-8 border-t border-border">
+            <button
+              onClick={() => setIsRejectedExpanded(!isRejectedExpanded)}
+              className="w-full flex items-center justify-between text-left group"
+            >
+              <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                Rejected Users ({rejectedUsers.length})
+              </h2>
+              <ChevronDown
+                className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+                  isRejectedExpanded ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+
+            {isRejectedExpanded && (
+              <div className="mt-6 space-y-0">
+                {rejectedUsers.map((user, index) => {
+                  const config = roleConfig[user.role as keyof typeof roleConfig] || roleConfig.user;
+
+                  return (
+                    <div key={user.id}>
+                      <div className="py-6 opacity-60">
+                        <div className="flex items-baseline justify-between gap-8">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-base font-medium text-foreground mb-1">
+                              {user.name || "No name"}
+                            </h3>
+                            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                              <span>{user.email}</span>
+                              <span>·</span>
+                              <span>{config.label}</span>
+                              <span>·</span>
+                              <span className="text-red-600">Rejected</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Rejected on {user.approved_at ? new Date(user.approved_at).toLocaleDateString() : "N/A"}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => handleApprove(user.id)}
+                            disabled={actionLoading === user.id}
+                            className="text-sm text-green-600 hover:text-green-700 transition-colors disabled:opacity-50"
+                          >
+                            Restore
+                          </button>
+                        </div>
+                      </div>
+                      {index < rejectedUsers.length - 1 && <div className="h-px bg-border" />}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
       </div>
     </div>
