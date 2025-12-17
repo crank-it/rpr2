@@ -7,7 +7,7 @@ import { AppLayout } from "@/components/AppLayout";
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: "RPR Flow | Project Management",
+  title: "RPR Hair Care | Project Management",
   description: "Streamline your project workflow with intelligent task management and team collaboration.",
   robots: {
     index: false,
