@@ -71,26 +71,26 @@ export function CommentThread({ entityType, entityId }: CommentThreadProps) {
   const [submitting, setSubmitting] = useState(false)
   const [newComment, setNewComment] = useState('')
   const [userRole, setUserRole] = useState<string>('')
+  const [currentUserName, setCurrentUserName] = useState<string>('User')
 
-  // Get current user's display name (temporarily hardcoded - no auth)
-  const currentUserName = 'User'
   const isAdmin = userRole === 'admin' || userRole === 'superadmin'
 
-  // Temporarily disabled - no authentication
-  // useEffect(() => {
-  //   async function fetchUserRole() {
-  //     try {
-  //       const response = await fetch('/api/users/me')
-  //       if (response.ok) {
-  //         const data = await response.json()
-  //         setUserRole(data.role || '')
-  //       }
-  //     } catch (error) {
-  //       console.error('Failed to fetch user role:', error)
-  //     }
-  //   }
-  //   fetchUserRole()
-  // }, [])
+  // Fetch current user info
+  useEffect(() => {
+    async function fetchCurrentUser() {
+      try {
+        const response = await fetch('/api/users/me')
+        if (response.ok) {
+          const data = await response.json()
+          setCurrentUserName(data.name || 'User')
+          setUserRole(data.role || '')
+        }
+      } catch (error) {
+        console.error('Failed to fetch current user:', error)
+      }
+    }
+    fetchCurrentUser()
+  }, [])
 
   useEffect(() => {
     async function fetchComments() {

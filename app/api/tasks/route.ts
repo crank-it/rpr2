@@ -1,10 +1,28 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { currentUser } from '@clerk/nextjs/server'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+async function getCurrentUserName(): Promise<string> {
+  try {
+    const user = await currentUser()
+    if (user) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('name')
+        .eq('id', user.id)
+        .single()
+      return userData?.name || 'User'
+    }
+  } catch (error) {
+    console.error('Failed to get current user:', error)
+  }
+  return 'User'
+}
 
 export async function GET(request: Request) {
   try {
@@ -62,6 +80,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
+    const performedBy = await getCurrentUserName()
 
     // Validate required fields
     if (!body.projectId) {
@@ -102,6 +121,14 @@ export async function POST(request: Request) {
         { status: 500 }
       )
     }
+
+    // Log activity
+    await supabase.from('activities').insert({
+      type: 'task_created',
+      description: `Task "${task.title}" was created`,
+      project_id: task.project_id,
+      performed_by: performedBy
+    })
 
     return NextResponse.json({
       id: task.id,

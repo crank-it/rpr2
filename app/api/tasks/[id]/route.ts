@@ -1,10 +1,28 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { currentUser } from '@clerk/nextjs/server'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+async function getCurrentUserName(): Promise<string> {
+  try {
+    const user = await currentUser()
+    if (user) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('name')
+        .eq('id', user.id)
+        .single()
+      return userData?.name || 'User'
+    }
+  } catch (error) {
+    console.error('Failed to get current user:', error)
+  }
+  return 'User'
+}
 
 export async function GET(
   request: Request,
@@ -57,6 +75,14 @@ export async function PATCH(
   try {
     const { id } = await params
     const body = await request.json()
+    const performedBy = await getCurrentUserName()
+
+    // Fetch old task for comparison
+    const { data: oldTask } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('id', id)
+      .single()
 
     const updateData: any = {
       title: body.title,
@@ -91,6 +117,32 @@ export async function PATCH(
       )
     }
 
+    // Log activity based on what changed
+    if (oldTask) {
+      if (body.status === 'COMPLETED' && oldTask.status !== 'COMPLETED') {
+        await supabase.from('activities').insert({
+          type: 'task_completed',
+          description: `Task "${task.title}" was completed`,
+          project_id: task.project_id,
+          performed_by: performedBy
+        })
+      } else if (oldTask.status !== body.status) {
+        await supabase.from('activities').insert({
+          type: 'task_status_changed',
+          description: `Task "${task.title}" status changed to ${body.status}`,
+          project_id: task.project_id,
+          performed_by: performedBy
+        })
+      } else {
+        await supabase.from('activities').insert({
+          type: 'task_updated',
+          description: `Task "${task.title}" was updated`,
+          project_id: task.project_id,
+          performed_by: performedBy
+        })
+      }
+    }
+
     return NextResponse.json({
       id: task.id,
       projectId: task.project_id,
@@ -120,6 +172,14 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
+    const performedBy = await getCurrentUserName()
+
+    // Fetch task before deleting for activity log
+    const { data: task } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('id', id)
+      .single()
 
     const { error } = await supabase
       .from('tasks')
@@ -132,6 +192,16 @@ export async function DELETE(
         { error: 'Failed to delete task' },
         { status: 500 }
       )
+    }
+
+    // Log activity
+    if (task) {
+      await supabase.from('activities').insert({
+        type: 'task_deleted',
+        description: `Task "${task.title}" was deleted`,
+        project_id: task.project_id,
+        performed_by: performedBy
+      })
     }
 
     return NextResponse.json({ success: true })

@@ -20,6 +20,7 @@ interface CreateProjectModalProps {
 
 export function CreateProjectModal({ isOpen, onClose, onProjectCreated, customers = [], initialData, isEditing = false }: CreateProjectModalProps) {
   const [loading, setLoading] = useState(false)
+  const [dataLoading, setDataLoading] = useState(false)
   const [users, setUsers] = useState<Array<{ id: string; name: string }>>([])
   const [categories, setCategories] = useState<Array<{ id: string; name: string; customFields?: any[] }>>([])
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('')
@@ -35,10 +36,48 @@ export function CreateProjectModal({ isOpen, onClose, onProjectCreated, customer
     assignees: [] as string[],
     assets: [] as Array<{ label: string; url: string }>
   })
+  const [dataFetched, setDataFetched] = useState(false)
 
-  // Reset form when modal opens or initialData changes
+  // Fetch users and categories first, then populate form
   useEffect(() => {
+    async function fetchData() {
+      setDataLoading(true)
+      try {
+        // Fetch active users and categories in parallel
+        const [usersRes, categoriesRes] = await Promise.all([
+          fetch('/api/users/active'),
+          fetch('/api/project-categories')
+        ])
+
+        if (usersRes.ok) {
+          const usersData = await usersRes.json()
+          setUsers(usersData.map((u: any) => ({ id: u.id, name: u.name || u.email })))
+        }
+
+        if (categoriesRes.ok) {
+          const categoriesData = await categoriesRes.json()
+          setCategories(categoriesData.map((c: any) => ({ id: c.id, name: c.name, customFields: c.customFields })))
+        }
+
+        setDataFetched(true)
+      } catch (error) {
+        console.error('Failed to fetch data:', error)
+      } finally {
+        setDataLoading(false)
+      }
+    }
+
     if (isOpen) {
+      fetchData()
+    } else {
+      // Reset dataFetched when modal closes
+      setDataFetched(false)
+    }
+  }, [isOpen])
+
+  // Populate form after data is fetched
+  useEffect(() => {
+    if (isOpen && dataFetched) {
       if (initialData) {
         setFormData({
           title: initialData.title || '',
@@ -68,34 +107,7 @@ export function CreateProjectModal({ isOpen, onClose, onProjectCreated, customer
         setCustomFieldValues({})
       }
     }
-  }, [isOpen, initialData])
-
-  // Fetch users and categories
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        // Fetch active users
-        const usersRes = await fetch('/api/users/active')
-        if (usersRes.ok) {
-          const usersData = await usersRes.json()
-          setUsers(usersData.map((u: any) => ({ id: u.id, name: u.name || u.email })))
-        }
-
-        // Fetch categories
-        const categoriesRes = await fetch('/api/project-categories')
-        if (categoriesRes.ok) {
-          const categoriesData = await categoriesRes.json()
-          setCategories(categoriesData.map((c: any) => ({ id: c.id, name: c.name, customFields: c.customFields })))
-        }
-      } catch (error) {
-        console.error('Failed to fetch data:', error)
-      }
-    }
-
-    if (isOpen) {
-      fetchData()
-    }
-  }, [isOpen])
+  }, [isOpen, dataFetched, initialData])
 
   // Fetch custom fields when category selected
   useEffect(() => {
@@ -197,6 +209,11 @@ export function CreateProjectModal({ isOpen, onClose, onProjectCreated, customer
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEditing ? "Edit Project" : "Create New Project"} size="lg">
+      {dataLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin h-6 w-6 border-2 border-solid border-foreground border-r-transparent rounded-full" />
+        </div>
+      ) : (
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-2 gap-4">
           <Input
@@ -523,6 +540,7 @@ export function CreateProjectModal({ isOpen, onClose, onProjectCreated, customer
           </Button>
         </div>
       </form>
+      )}
     </Modal>
   )
 }

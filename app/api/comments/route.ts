@@ -1,10 +1,28 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { currentUser } from '@clerk/nextjs/server'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+async function getCurrentUserName(): Promise<string> {
+  try {
+    const user = await currentUser()
+    if (user) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('name')
+        .eq('id', user.id)
+        .single()
+      return userData?.name || 'User'
+    }
+  } catch (error) {
+    console.error('Failed to get current user:', error)
+  }
+  return 'User'
+}
 
 export async function GET(request: Request) {
   try {
@@ -96,6 +114,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     const { entityType, entityId, content, author, authorEmail, parentId } = body
+    const performedBy = await getCurrentUserName()
 
     if (!entityType || !entityId || !content) {
       return NextResponse.json(
@@ -110,7 +129,7 @@ export async function POST(request: Request) {
         entity_type: entityType,
         entity_id: entityId,
         content,
-        author: author || 'Anonymous',
+        author: author || performedBy,
         author_email: authorEmail || null,
         parent_id: parentId || null
       })
@@ -124,6 +143,26 @@ export async function POST(request: Request) {
         { status: 500 }
       )
     }
+
+    // Log activity based on entity type
+    const activityData: any = {
+      type: parentId ? 'comment_reply_added' : 'comment_added',
+      description: parentId
+        ? `${performedBy} replied to a comment`
+        : `${performedBy} added a comment`,
+      performed_by: performedBy
+    }
+
+    // Link activity to the appropriate entity
+    if (entityType === 'PROJECT') {
+      activityData.project_id = entityId
+    } else if (entityType === 'CUSTOMER') {
+      activityData.customer_id = entityId
+    } else if (entityType === 'CAMPAIGN') {
+      activityData.campaign_id = entityId
+    }
+
+    await supabase.from('activities').insert(activityData)
 
     const transformedComment = {
       id: comment.id,
@@ -207,6 +246,7 @@ export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const commentId = searchParams.get('commentId')
+    const performedBy = await getCurrentUserName()
 
     if (!commentId) {
       return NextResponse.json(
@@ -214,6 +254,13 @@ export async function DELETE(request: Request) {
         { status: 400 }
       )
     }
+
+    // Fetch comment before deleting for activity log
+    const { data: comment } = await supabase
+      .from('comments')
+      .select('*')
+      .eq('id', commentId)
+      .single()
 
     // Soft delete by setting deleted_at
     const { error } = await supabase
@@ -227,6 +274,26 @@ export async function DELETE(request: Request) {
         { error: 'Failed to delete comment' },
         { status: 500 }
       )
+    }
+
+    // Log activity
+    if (comment) {
+      const activityData: any = {
+        type: 'comment_deleted',
+        description: `${performedBy} deleted a comment`,
+        performed_by: performedBy
+      }
+
+      // Link activity to the appropriate entity
+      if (comment.entity_type === 'PROJECT') {
+        activityData.project_id = comment.entity_id
+      } else if (comment.entity_type === 'CUSTOMER') {
+        activityData.customer_id = comment.entity_id
+      } else if (comment.entity_type === 'CAMPAIGN') {
+        activityData.campaign_id = comment.entity_id
+      }
+
+      await supabase.from('activities').insert(activityData)
     }
 
     return NextResponse.json({ success: true })

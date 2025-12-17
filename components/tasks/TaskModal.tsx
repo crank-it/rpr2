@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { MultiSelect } from '@/components/ui/multi-select'
@@ -31,10 +31,37 @@ export function TaskModal({ isOpen, onClose, onSave, projectId, initialData }: T
   const [attachment, setAttachment] = useState('')
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
+  const [dataLoading, setDataLoading] = useState(false)
+  const [dataFetched, setDataFetched] = useState(false)
 
+  // Fetch users first
   useEffect(() => {
+    async function fetchUsers() {
+      setDataLoading(true)
+      try {
+        const response = await fetch('/api/users/active')
+        if (response.ok) {
+          const data = await response.json()
+          setUsers(data.map((u: any) => ({ id: u.id, name: u.name || u.email, email: u.email })))
+        }
+        setDataFetched(true)
+      } catch (error) {
+        console.error('Failed to fetch users:', error)
+      } finally {
+        setDataLoading(false)
+      }
+    }
+
     if (isOpen) {
       fetchUsers()
+    } else {
+      setDataFetched(false)
+    }
+  }, [isOpen])
+
+  // Populate form after users are fetched
+  useEffect(() => {
+    if (isOpen && dataFetched) {
       if (initialData) {
         setTitle(initialData.title || '')
         setDetails(initialData.details || '')
@@ -52,19 +79,7 @@ export function TaskModal({ isOpen, onClose, onSave, projectId, initialData }: T
         setAttachment('')
       }
     }
-  }, [isOpen, initialData])
-
-  const fetchUsers = async () => {
-    try {
-      const response = await fetch('/api/users/active')
-      if (response.ok) {
-        const data = await response.json()
-        setUsers(data.map((u: any) => ({ id: u.id, name: u.name || u.email, email: u.email })))
-      }
-    } catch (error) {
-      console.error('Failed to fetch users:', error)
-    }
-  }
+  }, [isOpen, dataFetched, initialData])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -95,6 +110,11 @@ export function TaskModal({ isOpen, onClose, onSave, projectId, initialData }: T
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={initialData ? 'Edit Task' : 'New Task'} size="lg">
+      {dataLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin h-6 w-6 border-2 border-solid border-foreground border-r-transparent rounded-full" />
+        </div>
+      ) : (
       <form onSubmit={handleSubmit} className="space-y-6">
         <Input
           label="Title"
@@ -104,10 +124,10 @@ export function TaskModal({ isOpen, onClose, onSave, projectId, initialData }: T
           required
         />
 
-        <Textarea
+        <RichTextEditor
           label="Details"
           value={details}
-          onChange={(e) => setDetails(e.target.value)}
+          onChange={setDetails}
           placeholder="Add task details..."
         />
 
@@ -158,6 +178,7 @@ export function TaskModal({ isOpen, onClose, onSave, projectId, initialData }: T
           </Button>
         </div>
       </form>
+      )}
     </Modal>
   )
 }
