@@ -469,12 +469,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Desktop Sidebar */}
         <aside className="hidden lg:flex lg:w-64 lg:flex-col border-r border-slate-300 bg-white">
           <div className="flex h-16 items-center gap-3 px-6">
-            <div className="flex flex-col">
-              <div className="text-xl font-light tracking-wider text-gray-900" style={{ letterSpacing: '0.1em' }}>
-                RPR HAIRCARE
+            <Link href="/" className="flex flex-col cursor-pointer">
+              <div className="flex flex-col">
+                <div className="text-xl font-light tracking-wider text-gray-900" style={{ letterSpacing: '0.1em' }}>
+                  RPR HAIRCARE
+                </div>
+                <p className="text-xs text-gray-500 mt-0.5">Operations Hub</p>
               </div>
-              <p className="text-xs text-gray-500 mt-0.5">Operations Hub</p>
-            </div>
+            </Link>
           </div>
 
           <nav className="flex-1 space-y-6 p-4">
