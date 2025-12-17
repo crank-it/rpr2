@@ -15,6 +15,7 @@ interface Project {
   dueDate: string | null
   customerId: string | null
   createdAt: string
+  assignees: string[]
   customer?: {
     id: string
     name: string
@@ -27,9 +28,15 @@ interface Customer {
   name: string
 }
 
+interface User {
+  id: string
+  name: string
+}
+
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
+  const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -38,9 +45,10 @@ export default function ProjectsPage() {
     setLoading(true)
 
     try {
-      const [projectsRes, customersRes] = await Promise.all([
+      const [projectsRes, customersRes, usersRes] = await Promise.all([
         fetch('/api/projects'),
-        fetch('/api/customers')
+        fetch('/api/customers'),
+        fetch('/api/users')
       ])
 
       if (!projectsRes.ok) {
@@ -54,6 +62,11 @@ export default function ProjectsPage() {
       }
       const customersData = await customersRes.json()
       setCustomers(customersData)
+
+      if (usersRes.ok) {
+        const usersData = await usersRes.json()
+        setUsers(usersData.map((u: any) => ({ id: u.id, name: u.name || u.email })))
+      }
     } catch (error) {
       console.error('Error fetching data:', error)
     }
@@ -95,6 +108,16 @@ export default function ProjectsPage() {
     if (!project.customerId) return null
     const customer = customers.find(c => c.id === project.customerId)
     return customer?.name || null
+  }
+
+  const getAssigneeNames = (project: Project) => {
+    if (!project.assignees || project.assignees.length === 0) return null
+    const names = project.assignees
+      .map(id => users.find(u => u.id === id)?.name)
+      .filter(Boolean)
+    if (names.length === 0) return null
+    if (names.length <= 2) return names.join(', ')
+    return `${names[0]}, ${names[1]} +${names.length - 2}`
   }
 
   const filteredProjects = projects.filter(project => {
@@ -158,6 +181,7 @@ export default function ProjectsPage() {
           <div className="space-y-0">
             {filteredProjects.map((project, index) => {
               const customerName = getCustomerName(project)
+              const assigneeNames = getAssigneeNames(project)
 
               return (
                 <div key={project.id}>
@@ -171,13 +195,15 @@ export default function ProjectsPage() {
                           {project.title}
                         </h3>
                         <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                          <span>{assigneeNames || 'Unassigned'}</span>
+                          <span>·</span>
+                          <span>{formatStatus(project.status)}</span>
                           {customerName && (
                             <>
-                              <span>{customerName}</span>
                               <span>·</span>
+                              <span>{customerName}</span>
                             </>
                           )}
-                          <span>{formatStatus(project.status)}</span>
                           {project.dueDate && (
                             <>
                               <span>·</span>

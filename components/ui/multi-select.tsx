@@ -68,17 +68,17 @@ export function MultiSelect({
   return (
     <div className={cn('w-full', className)} ref={containerRef}>
       {label && (
-        <label className="block text-sm font-medium text-gray-900 mb-2">
+        <label className="block text-sm font-medium text-foreground mb-2">
           {label}
-          {required && <span className="text-red-500 ml-1">*</span>}
+          {required && <span className="text-destructive ml-1">*</span>}
         </label>
       )}
 
       <div
         className={cn(
-          'luxury-input min-h-[42px] cursor-pointer flex flex-wrap gap-1.5 items-center',
-          error && 'border-red-500 focus:ring-red-500/20',
-          isOpen && 'ring-2 ring-teal-500/20 border-teal-500'
+          'flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground transition-all duration-200 min-h-[42px] cursor-pointer flex-wrap gap-1.5 items-center',
+          error && 'border-destructive focus:ring-destructive/20',
+          isOpen && 'ring-2 ring-primary/20 border-primary'
         )}
         onClick={() => setIsOpen(!isOpen)}
       >
@@ -86,13 +86,13 @@ export function MultiSelect({
           selectedLabels.map((label, index) => (
             <span
               key={value[index]}
-              className="inline-flex items-center gap-1 px-2 py-0.5 bg-teal-50 text-teal-700 rounded text-sm"
+              className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded text-sm"
             >
               {label}
               <button
                 type="button"
                 onClick={(e) => removeOption(value[index], e)}
-                className="hover:text-teal-900"
+                className="hover:text-primary/80"
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -101,11 +101,11 @@ export function MultiSelect({
             </span>
           ))
         ) : (
-          <span className="text-gray-400">{placeholder}</span>
+          <span className="text-muted-foreground">{placeholder}</span>
         )}
 
         <svg
-          className={cn('w-4 h-4 ml-auto text-gray-400 transition-transform', isOpen && 'rotate-180')}
+          className={cn('w-4 h-4 ml-auto text-muted-foreground transition-transform', isOpen && 'rotate-180')}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -115,14 +115,14 @@ export function MultiSelect({
       </div>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full max-h-60 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
-          <div className="p-2 border-b border-gray-100">
+        <div className="absolute z-50 mt-1 w-full max-h-60 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
+          <div className="p-2 border-b border-border">
             <input
               type="text"
               placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:border-teal-500"
+              className="w-full px-3 py-1.5 text-sm border border-input rounded-lg focus:outline-none focus:border-primary"
               onClick={(e) => e.stopPropagation()}
             />
           </div>
@@ -132,8 +132,8 @@ export function MultiSelect({
                 <div
                   key={option.value}
                   className={cn(
-                    'px-3 py-2 cursor-pointer flex items-center gap-2 hover:bg-gray-50',
-                    value.includes(option.value) && 'bg-teal-50'
+                    'px-3 py-2 cursor-pointer flex items-center gap-2 hover:bg-muted',
+                    value.includes(option.value) && 'bg-primary/10'
                   )}
                   onClick={(e) => {
                     e.stopPropagation()
@@ -143,27 +143,27 @@ export function MultiSelect({
                   <div className={cn(
                     'w-4 h-4 border rounded flex items-center justify-center',
                     value.includes(option.value)
-                      ? 'bg-teal-600 border-teal-600'
-                      : 'border-gray-300'
+                      ? 'bg-primary border-primary'
+                      : 'border-input'
                   )}>
                     {value.includes(option.value) && (
-                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-3 h-3 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                     )}
                   </div>
-                  <span className="text-sm text-gray-700">{option.label}</span>
+                  <span className="text-sm text-foreground">{option.label}</span>
                 </div>
               ))
             ) : (
-              <div className="px-3 py-2 text-sm text-gray-500">No options found</div>
+              <div className="px-3 py-2 text-sm text-muted-foreground">No options found</div>
             )}
           </div>
         </div>
       )}
 
       {error && (
-        <p className="mt-1.5 text-sm text-red-600">{error}</p>
+        <p className="mt-1.5 text-sm text-destructive">{error}</p>
       )}
     </div>
   )

@@ -173,7 +173,7 @@ export function CreateCustomerModal({ isOpen, onClose, onCustomerCreated, initia
         />
 
         <div>
-          <label className="text-sm font-medium text-gray-900 mb-2 block">
+          <label className="text-sm font-medium text-foreground mb-2 block">
             Brands Carried
           </label>
           <div className="flex flex-wrap gap-2">
@@ -184,8 +184,8 @@ export function CreateCustomerModal({ isOpen, onClose, onCustomerCreated, initia
                 onClick={() => toggleBrand(brand)}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border ${
                   formData.brands.includes(brand)
-                    ? 'bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100'
-                    : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                    ? 'bg-primary/10 text-primary border-primary/30 hover:bg-primary/20'
+                    : 'bg-background text-foreground border-input hover:border-primary/50'
                 }`}
               >
                 {brand}

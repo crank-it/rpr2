@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { MultiSelect } from '@/components/ui/multi-select'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 
 interface CreateProjectModalProps {
   isOpen: boolean
@@ -166,35 +167,73 @@ export function CreateProjectModal({ isOpen, onClose, onProjectCreated, customer
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEditing ? "Edit Project" : "Create New Project"} size="lg">
       <form onSubmit={handleSubmit} className="space-y-6">
-        <Input
-          label="Project Title"
-          placeholder="e.g., Summer Campaign 2024"
-          value={formData.title}
-          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-          required
-        />
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            label="Project Title"
+            placeholder="e.g., Summer Campaign 2024"
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            required
+          />
 
-        <Textarea
+          <Select
+            label="Project Type"
+            value={selectedCategoryId}
+            onChange={(e) => {
+              setSelectedCategoryId(e.target.value)
+              setCustomFieldValues({}) // Reset custom values when type changes
+            }}
+            options={[
+              { value: '', label: 'Select project type...' },
+              ...categories.map(c => ({ value: c.id, label: c.name }))
+            ]}
+            required
+          />
+        </div>
+
+        <RichTextEditor
           label="Description"
           placeholder="Describe the project objectives and deliverables..."
           value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          onChange={(value) => setFormData({ ...formData, description: value })}
           required
         />
 
-        <Select
-          label="Project Type"
-          value={selectedCategoryId}
-          onChange={(e) => {
-            setSelectedCategoryId(e.target.value)
-            setCustomFieldValues({}) // Reset custom values when type changes
-          }}
-          options={[
-            { value: '', label: 'Select project type...' },
-            ...categories.map(c => ({ value: c.id, label: c.name }))
-          ]}
-          required
-        />
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-foreground">
+            Reference Links
+          </label>
+          {formData.assets.map((asset: any, index: number) => (
+            <div key={index} className="flex gap-2">
+              <Input
+                placeholder="Label (e.g., 'Design Files')"
+                value={asset.label}
+                onChange={(e) => updateAsset(index, 'label', e.target.value)}
+              />
+              <Input
+                placeholder="URL"
+                value={asset.url}
+                onChange={(e) => updateAsset(index, 'url', e.target.value)}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => removeAsset(index)}
+                className="px-3"
+              >
+                ×
+              </Button>
+            </div>
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={addAsset}
+            className="w-full"
+          >
+            + Add Link
+          </Button>
+        </div>
 
         {categoryCustomFields.length > 0 && (
           <div className="space-y-4 border-t pt-4 mt-4">
@@ -398,6 +437,7 @@ export function CreateProjectModal({ isOpen, onClose, onProjectCreated, customer
               { value: 'APPROVED', label: 'Approved' },
               { value: 'COMPLETED', label: 'Completed' }
             ]}
+            required
           />
 
           <Select
@@ -410,10 +450,20 @@ export function CreateProjectModal({ isOpen, onClose, onProjectCreated, customer
               { value: 'HIGH', label: 'High' },
               { value: 'URGENT', label: 'Urgent' }
             ]}
+            required
           />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
+          <MultiSelect
+            label="Assignees"
+            options={users.map(u => ({ value: u.id, label: u.name }))}
+            value={formData.assignees}
+            onChange={(value) => setFormData({ ...formData, assignees: value })}
+            placeholder="Select team members..."
+            required
+          />
+
           <Select
             label="Customer"
             value={formData.customerId}
@@ -423,66 +473,21 @@ export function CreateProjectModal({ isOpen, onClose, onProjectCreated, customer
               ...customers.map(c => ({ value: c.id, label: c.name }))
             ]}
           />
-
-          <Input
-            label="Due Date"
-            type="date"
-            value={formData.dueDate}
-            onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-            required
-          />
         </div>
 
-        <MultiSelect
-          label="Assignees"
-          options={users.map(u => ({ value: u.id, label: u.name }))}
-          value={formData.assignees}
-          onChange={(value) => setFormData({ ...formData, assignees: value })}
-          placeholder="Select team members..."
+        <Input
+          label="Due Date"
+          type="date"
+          value={formData.dueDate}
+          onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+          required
         />
-
-
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-900">
-            Dropbox Links
-          </label>
-          {formData.assets.map((asset: any, index: number) => (
-            <div key={index} className="flex gap-2">
-              <Input
-                placeholder="Label (e.g., 'Design Files')"
-                value={asset.label}
-                onChange={(e) => updateAsset(index, 'label', e.target.value)}
-              />
-              <Input
-                placeholder="Dropbox URL"
-                value={asset.url}
-                onChange={(e) => updateAsset(index, 'url', e.target.value)}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => removeAsset(index)}
-                className="px-3"
-              >
-                ×
-              </Button>
-            </div>
-          ))}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={addAsset}
-            className="w-full"
-          >
-            + Add Asset Link
-          </Button>
-        </div>
 
         <div className="flex justify-end gap-3 pt-6 mt-2">
           <Button type="button" variant="outline" onClick={onClose} className="px-6">
             Cancel
           </Button>
-          <Button type="submit" disabled={loading || !formData.title || !formData.description || !formData.dueDate} className="px-6">
+          <Button type="submit" disabled={loading || !formData.title || !formData.description || !formData.dueDate || formData.assignees.length === 0} className="px-6">
             {loading ? (isEditing ? 'Saving...' : 'Creating...') : (isEditing ? 'Save Changes' : 'Create Project')}
           </Button>
         </div>

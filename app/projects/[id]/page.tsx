@@ -40,6 +40,16 @@ const formatStatus = (status: string) => {
   return status.replace('_', ' ').charAt(0) + status.replace('_', ' ').slice(1).toLowerCase()
 }
 
+const getTaskAssigneeNames = (assigneeIds: string[], users: Array<{ id: string; name: string }>) => {
+  if (!assigneeIds || assigneeIds.length === 0) return 'Unassigned'
+  const names = assigneeIds
+    .map(id => users.find(u => u.id === id)?.name)
+    .filter(Boolean)
+  if (names.length === 0) return 'Unassigned'
+  if (names.length <= 2) return names.join(', ')
+  return `${names[0]}, ${names[1]} +${names.length - 2}`
+}
+
 export default function ProjectDetailPage() {
   const params = useParams()
   const projectId = params.id as string
@@ -51,6 +61,7 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
+  const [editingTask, setEditingTask] = useState<any>(null)
 
   const fetchProject = async () => {
     setLoading(true)
@@ -120,18 +131,43 @@ export default function ProjectDetailPage() {
 
   const handleSaveTask = async (taskData: any) => {
     try {
-      const response = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(taskData)
-      })
+      if (editingTask) {
+        // Update existing task
+        const response = await fetch(`/api/tasks/${editingTask.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(taskData)
+        })
 
-      if (response.ok) {
-        await fetchProject()
+        if (response.ok) {
+          await fetchProject()
+          setEditingTask(null)
+        }
+      } else {
+        // Create new task
+        const response = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(taskData)
+        })
+
+        if (response.ok) {
+          await fetchProject()
+        }
       }
     } catch (error) {
-      console.error('Failed to create task:', error)
+      console.error('Failed to save task:', error)
     }
+  }
+
+  const handleEditTask = (task: any) => {
+    setEditingTask(task)
+    setIsTaskModalOpen(true)
+  }
+
+  const handleCloseTaskModal = () => {
+    setIsTaskModalOpen(false)
+    setEditingTask(null)
   }
 
   if (loading) {
@@ -184,20 +220,21 @@ export default function ProjectDetailPage() {
             </button>
           </div>
           {project.description && (
-            <p className="text-sm text-muted-foreground">
-              {project.description}
-            </p>
+            <div
+              className="text-sm text-muted-foreground prose prose-sm max-w-none"
+              dangerouslySetInnerHTML={{ __html: project.description }}
+            />
           )}
         </div>
 
         {/* Project Details */}
-        <div className="mb-20">
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-8">
+        <div className="mb-12">
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">
             Details
           </h2>
-          <div className="space-y-0">
+          <div className="rounded-xl border border-border bg-card p-6 space-y-0">
             {/* Status */}
-            <div className="py-6">
+            <div className="py-4">
               <div className="flex items-baseline justify-between gap-8">
                 <div className="flex-1 min-w-0">
                   <h3 className="text-base font-medium text-foreground mb-1">
@@ -212,7 +249,7 @@ export default function ProjectDetailPage() {
             <div className="h-px bg-border" />
 
             {/* Priority */}
-            <div className="py-6">
+            <div className="py-4">
               <div className="flex items-baseline justify-between gap-8">
                 <div className="flex-1 min-w-0">
                   <h3 className="text-base font-medium text-foreground mb-1">
@@ -227,7 +264,7 @@ export default function ProjectDetailPage() {
             <div className="h-px bg-border" />
 
             {/* Customer */}
-            <div className="py-6">
+            <div className="py-4">
               <div className="flex items-baseline justify-between gap-8">
                 <div className="flex-1 min-w-0">
                   <h3 className="text-base font-medium text-foreground mb-1">
@@ -249,7 +286,7 @@ export default function ProjectDetailPage() {
             <div className="h-px bg-border" />
 
             {/* Due Date */}
-            <div className="py-6">
+            <div className="py-4">
               <div className="flex items-baseline justify-between gap-8">
                 <div className="flex-1 min-w-0">
                   <h3 className="text-base font-medium text-foreground mb-1">
@@ -266,7 +303,7 @@ export default function ProjectDetailPage() {
             {project.assignees && project.assignees.length > 0 && (
               <>
                 <div className="h-px bg-border" />
-                <div className="py-6">
+                <div className="py-4">
                   <div className="flex items-baseline justify-between gap-8">
                     <div className="flex-1 min-w-0">
                       <h3 className="text-base font-medium text-foreground mb-3">
@@ -287,7 +324,7 @@ export default function ProjectDetailPage() {
             {categories.length > 0 && (
               <>
                 <div className="h-px bg-border" />
-                <div className="py-6">
+                <div className="py-4">
                   <div className="flex items-baseline justify-between gap-8">
                     <div className="flex-1 min-w-0">
                       <h3 className="text-base font-medium text-foreground mb-3">
@@ -314,7 +351,7 @@ export default function ProjectDetailPage() {
             {project.customFieldValues && Object.keys(project.customFieldValues).length > 0 && (
               <>
                 <div className="h-px bg-border" />
-                <div className="py-6">
+                <div className="py-4">
                   <h3 className="text-base font-medium text-foreground mb-3">
                     Custom Fields
                   </h3>
@@ -371,25 +408,25 @@ export default function ProjectDetailPage() {
           </div>
         </div>
 
-        {/* Assets */}
+        {/* Reference Links */}
         {project.assets && project.assets.length > 0 && (
-          <div className="mb-20">
-            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-8">
-              Assets & Files
+          <div className="mb-12">
+            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">
+              Reference Links
             </h2>
-            <div className="space-y-0">
+            <div className="rounded-xl border border-border bg-card p-6 space-y-0">
               {project.assets.map((asset, index) => (
                 <div key={index}>
                   <a
                     href={asset.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block py-6 transition-opacity hover:opacity-60"
+                    className="block py-4 transition-opacity hover:opacity-60"
                   >
                     <div className="flex items-baseline justify-between gap-8">
                       <div className="flex-1 min-w-0">
                         <h3 className="text-base font-medium text-foreground mb-1">
-                          {asset.label || 'Asset'}
+                          {asset.label || 'Link'}
                         </h3>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <ExternalLink className="h-3 w-3" />
@@ -406,8 +443,8 @@ export default function ProjectDetailPage() {
         )}
 
         {/* Tasks */}
-        <div className="mb-20">
-          <div className="flex items-center justify-between mb-8">
+        <div className="mb-12">
+          <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
               Tasks
             </h2>
@@ -419,69 +456,58 @@ export default function ProjectDetailPage() {
             </button>
           </div>
 
-          {tasks.length === 0 ? (
-            <div className="text-center py-16">
-              <p className="text-muted-foreground">
-                No tasks yet
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-0">
-              {tasks.map((task, index) => (
-                <div key={task.id}>
-                  <div className="py-6">
-                    <div className="flex items-baseline justify-between gap-8">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-base font-medium text-foreground mb-1">
-                          {task.title}
-                        </h3>
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                          <span>{formatStatus(task.status)}</span>
-                          {task.priority && (
-                            <>
-                              <span>·</span>
-                              <span>{task.priority.charAt(0) + task.priority.slice(1).toLowerCase()}</span>
-                            </>
-                          )}
-                          {task.targetDate && (
-                            <>
-                              <span>·</span>
-                              <span>Due {formatDate(task.targetDate)}</span>
-                            </>
-                          )}
-                          {task.assigneeIds && task.assigneeIds.length > 0 && (
-                            <>
-                              <span>·</span>
-                              <span>{task.assigneeIds.length} assigned</span>
-                            </>
-                          )}
-                          {task.attachment && (
-                            <>
-                              <span>·</span>
-                              <a
-                                href={task.attachment}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-primary hover:text-primary/80"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                Attachment
-                              </a>
-                            </>
-                          )}
+          <div className="rounded-xl border border-border bg-card">
+            {tasks.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">
+                  No tasks yet
+                </p>
+              </div>
+            ) : (
+              <div className="p-6 space-y-0">
+                {tasks.map((task, index) => (
+                  <div key={task.id}>
+                    <button
+                      onClick={() => handleEditTask(task)}
+                      className="w-full text-left py-4 transition-opacity hover:opacity-60"
+                    >
+                      <div className="flex items-baseline justify-between gap-8">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-base font-medium text-foreground mb-1">
+                            {task.title}
+                          </h3>
+                          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                            <span>{getTaskAssigneeNames(task.assigneeIds || [], users)}</span>
+                            <span>·</span>
+                            <span>{formatStatus(task.status)}</span>
+                            <span>·</span>
+                            <span>{task.targetDate ? formatDate(task.targetDate) : 'No due date'}</span>
+                            {task.priority && (
+                              <>
+                                <span>·</span>
+                                <span>{task.priority.charAt(0) + task.priority.slice(1).toLowerCase()}</span>
+                              </>
+                            )}
+                            {task.attachment && (
+                              <>
+                                <span>·</span>
+                                <span className="text-primary">Attachment</span>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    </button>
+                    {index < tasks.length - 1 && <div className="h-px bg-border" />}
                   </div>
-                  {index < tasks.length - 1 && <div className="h-px bg-border" />}
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Comments */}
-        <div>
+        <div className="mb-12">
           <CommentThread entityType="PROJECT" entityId={project.id} />
         </div>
 
@@ -496,9 +522,10 @@ export default function ProjectDetailPage() {
 
         <TaskModal
           isOpen={isTaskModalOpen}
-          onClose={() => setIsTaskModalOpen(false)}
+          onClose={handleCloseTaskModal}
           onSave={handleSaveTask}
           projectId={projectId}
+          initialData={editingTask}
         />
       </div>
     </div>

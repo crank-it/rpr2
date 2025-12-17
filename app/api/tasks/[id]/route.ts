@@ -65,6 +65,7 @@ export async function PATCH(
       assignee_ids: body.assigneeIds || [],
       target_date: body.targetDate,
       status: body.status,
+      priority: body.priority,
       updated_at: new Date().toISOString()
     }
 
@@ -100,6 +101,7 @@ export async function PATCH(
       assigneeIds: task.assignee_ids || [],
       targetDate: task.target_date,
       status: task.status,
+      priority: task.priority,
       createdAt: task.created_at,
       updatedAt: task.updated_at,
       completedAt: task.completed_at,

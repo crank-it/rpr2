@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Send, MessageCircle, Loader2, Trash2 } from 'lucide-react'
+import { Send, Loader2, Pencil, Trash2, X, Check } from 'lucide-react'
 
 interface Comment {
   id: string
@@ -183,61 +183,85 @@ export function CommentThread({ entityType, entityId }: CommentThreadProps) {
     }
   }
 
+  const handleEditComment = (commentId: string, newContent: string) => {
+    // Update comment in UI
+    setComments(comments.map(c => {
+      if (c.id === commentId) {
+        return { ...c, content: newContent }
+      }
+      // Also check replies
+      if (c.replies) {
+        return {
+          ...c,
+          replies: c.replies.map(r =>
+            r.id === commentId ? { ...r, content: newContent } : r
+          )
+        }
+      }
+      return c
+    }))
+  }
+
   return (
     <div>
-      <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-8">
+      <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">
         Discussion
       </h2>
 
-      {loading ? (
-        <div className="text-center py-16">
-          <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-foreground border-r-transparent"></div>
-        </div>
-      ) : comments.length === 0 ? (
-        <div className="text-center py-8 mb-8">
-          <p className="text-sm text-muted-foreground">No comments yet</p>
-        </div>
-      ) : (
-        <div className="space-y-0 mb-8">
-          {comments.map((comment, index) => (
-            <div key={comment.id}>
-              <CommentItem
-                comment={comment}
-                entityType={entityType}
-                entityId={entityId}
-                onReplyAdded={handleAddReply}
-                currentUserName={currentUserName}
-                isAdmin={isAdmin}
-                onDelete={handleDeleteComment}
-              />
-              {index < comments.length - 1 && <div className="h-px bg-border" />}
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="rounded-xl border border-border bg-card">
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-foreground border-r-transparent"></div>
+          </div>
+        ) : comments.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-sm text-muted-foreground">No comments yet</p>
+          </div>
+        ) : (
+          <div className="p-6 space-y-0">
+            {comments.map((comment, index) => (
+              <div key={comment.id}>
+                <CommentItem
+                  comment={comment}
+                  entityType={entityType}
+                  entityId={entityId}
+                  onReplyAdded={handleAddReply}
+                  currentUserName={currentUserName}
+                  isAdmin={isAdmin}
+                  onDelete={handleDeleteComment}
+                  onEdit={handleEditComment}
+                />
+                {index < comments.length - 1 && <div className="h-px bg-border" />}
+              </div>
+            ))}
+          </div>
+        )}
 
-      <form onSubmit={handleSubmit}>
-        <div className="relative">
-          <input
-            type="text"
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            placeholder="Add a comment..."
-            className="w-full border-0 border-b border-border bg-transparent py-3 pr-12 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors"
-          />
-          <button
-            type="submit"
-            disabled={!newComment.trim() || submitting}
-            className="absolute right-0 top-1/2 -translate-y-1/2 text-primary hover:text-primary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {submitting ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Send className="h-5 w-5" />
-            )}
-          </button>
+        <div className="border-t border-border p-4">
+          <form onSubmit={handleSubmit}>
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Add a comment..."
+                className="flex-1 rounded-xl border border-input bg-background px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+              />
+              <button
+                type="submit"
+                disabled={!newComment.trim() || submitting}
+                className="p-2 text-primary hover:text-primary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {submitting ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Send className="h-5 w-5" />
+                )}
+              </button>
+            </div>
+          </form>
         </div>
-      </form>
+      </div>
     </div>
   )
 }
@@ -251,12 +275,18 @@ interface CommentItemProps {
   currentUserName: string
   isAdmin?: boolean
   onDelete?: (commentId: string) => void
+  onEdit?: (commentId: string, newContent: string) => void
 }
 
-function CommentItem({ comment, entityType, entityId, onReplyAdded, isReply = false, currentUserName, isAdmin = false, onDelete }: CommentItemProps) {
+function CommentItem({ comment, entityType, entityId, onReplyAdded, isReply = false, currentUserName, isAdmin = false, onDelete, onEdit }: CommentItemProps) {
   const [showReply, setShowReply] = useState(false)
   const [replyContent, setReplyContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editContent, setEditContent] = useState(comment.content)
+
+  const isOwnComment = comment.author === currentUserName
+  const canModify = isOwnComment || isAdmin
 
   const handleSubmitReply = async () => {
     if (!replyContent.trim() || submitting) return
@@ -288,6 +318,38 @@ function CommentItem({ comment, entityType, entityId, onReplyAdded, isReply = fa
     }
   }
 
+  const handleSaveEdit = async () => {
+    if (!editContent.trim() || submitting) return
+
+    setSubmitting(true)
+    try {
+      const response = await fetch(`/api/comments?commentId=${comment.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: editContent })
+      })
+
+      if (response.ok) {
+        if (onEdit) {
+          onEdit(comment.id, editContent)
+        }
+        setIsEditing(false)
+      } else {
+        alert('Failed to update comment')
+      }
+    } catch (error) {
+      console.error('Failed to update comment:', error)
+      alert('Failed to update comment')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditContent(comment.content)
+    setIsEditing(false)
+  }
+
   return (
     <div className={isReply ? "py-4 pl-8" : "py-6"}>
       <div className="flex items-baseline justify-between gap-8 mb-1">
@@ -295,10 +357,40 @@ function CommentItem({ comment, entityType, entityId, onReplyAdded, isReply = fa
           <h3 className="text-base font-medium text-foreground mb-1">
             {comment.author}
           </h3>
-          <p className="text-sm text-foreground mb-2">{comment.content}</p>
+
+          {isEditing ? (
+            <div className="mb-2">
+              <textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
+                rows={3}
+              />
+              <div className="flex items-center gap-2 mt-2">
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={!editContent.trim() || submitting}
+                  className="inline-flex items-center gap-1 px-3 py-1 text-sm text-primary hover:text-primary/80 disabled:opacity-50 transition-colors"
+                >
+                  <Check className="h-3 w-3" />
+                  {submitting ? 'Saving...' : 'Save'}
+                </button>
+                <button
+                  onClick={handleCancelEdit}
+                  className="inline-flex items-center gap-1 px-3 py-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="h-3 w-3" />
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-foreground mb-2">{comment.content}</p>
+          )}
+
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <RelativeTime timestamp={comment.timestamp} />
-            {!isReply && (
+            {!isReply && !isEditing && (
               <>
                 <span>·</span>
                 <button
@@ -309,11 +401,18 @@ function CommentItem({ comment, entityType, entityId, onReplyAdded, isReply = fa
                 </button>
               </>
             )}
-            {isAdmin && onDelete && (
+            {canModify && !isEditing && (
               <>
                 <span>·</span>
                 <button
-                  onClick={() => onDelete(comment.id)}
+                  onClick={() => setIsEditing(true)}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Edit
+                </button>
+                <span>·</span>
+                <button
+                  onClick={() => onDelete && onDelete(comment.id)}
                   className="text-destructive hover:text-destructive/80 transition-colors"
                 >
                   Delete
@@ -332,9 +431,16 @@ function CommentItem({ comment, entityType, entityId, onReplyAdded, isReply = fa
             value={replyContent}
             onChange={(e) => setReplyContent(e.target.value)}
             placeholder="Write a reply..."
-            className="w-full border-0 border-b border-border bg-transparent py-3 pr-24 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors"
+            className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
           />
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-3">
+          <div className="flex items-center gap-3 mt-2">
+            <button
+              onClick={handleSubmitReply}
+              disabled={!replyContent.trim() || submitting}
+              className="text-sm text-primary hover:text-primary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {submitting ? 'Sending...' : 'Reply'}
+            </button>
             <button
               onClick={() => {
                 setShowReply(false)
@@ -343,13 +449,6 @@ function CommentItem({ comment, entityType, entityId, onReplyAdded, isReply = fa
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               Cancel
-            </button>
-            <button
-              onClick={handleSubmitReply}
-              disabled={!replyContent.trim() || submitting}
-              className="text-sm text-primary hover:text-primary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {submitting ? 'Sending...' : 'Reply'}
             </button>
           </div>
         </div>
@@ -369,6 +468,7 @@ function CommentItem({ comment, entityType, entityId, onReplyAdded, isReply = fa
                 currentUserName={currentUserName}
                 isAdmin={isAdmin}
                 onDelete={onDelete}
+                onEdit={onEdit}
               />
               {comment.replies && index < comment.replies.length - 1 && <div className="h-px bg-border ml-8" />}
             </div>

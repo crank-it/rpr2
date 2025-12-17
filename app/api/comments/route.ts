@@ -145,6 +145,64 @@ export async function POST(request: Request) {
   }
 }
 
+export async function PATCH(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const commentId = searchParams.get('commentId')
+    const body = await request.json()
+    const { content } = body
+
+    if (!commentId) {
+      return NextResponse.json(
+        { error: 'commentId is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!content || !content.trim()) {
+      return NextResponse.json(
+        { error: 'content is required' },
+        { status: 400 }
+      )
+    }
+
+    const { data: comment, error } = await supabase
+      .from('comments')
+      .update({
+        content: content.trim(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', commentId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Failed to update comment:', error)
+      return NextResponse.json(
+        { error: 'Failed to update comment' },
+        { status: 500 }
+      )
+    }
+
+    const transformedComment = {
+      id: comment.id,
+      author: comment.author,
+      authorEmail: comment.author_email,
+      content: comment.content,
+      timestamp: comment.created_at ? comment.created_at.replace(' ', 'T') + 'Z' : null,
+      reactions: comment.reactions || []
+    }
+
+    return NextResponse.json(transformedComment)
+  } catch (error) {
+    console.error('Failed to update comment:', error)
+    return NextResponse.json(
+      { error: 'Failed to update comment' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url)

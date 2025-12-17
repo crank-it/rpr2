@@ -1,7 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Upload, Link as LinkIcon, Calendar, Users } from 'lucide-react'
+import { Users } from 'lucide-react'
+import { Modal } from '@/components/ui/modal'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Select } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
 
 interface User {
   id: string
@@ -103,166 +108,103 @@ export function TaskModal({ isOpen, onClose, onSave, projectId, initialData }: T
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-background w-full max-w-2xl mx-4 rounded-lg shadow-lg max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between px-8 py-6 border-b border-border">
-          <h2 className="text-2xl font-normal text-foreground">
-            {initialData ? 'Edit Task' : 'New Task'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
+    <Modal isOpen={isOpen} onClose={onClose} title={initialData ? 'Edit Task' : 'New Task'} size="lg">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <Input
+          label="Title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Task title..."
+          required
+        />
+
+        <Textarea
+          label="Details"
+          value={details}
+          onChange={(e) => setDetails(e.target.value)}
+          placeholder="Add task details..."
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <Select
+            label="Status"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            options={[
+              { value: 'DRAFT', label: 'Draft' },
+              { value: 'START', label: 'Start' },
+              { value: 'IN_PROGRESS', label: 'In Progress' },
+              { value: 'REVIEW', label: 'Review' },
+              { value: 'APPROVED', label: 'Approved' },
+              { value: 'COMPLETED', label: 'Completed' }
+            ]}
+            required
+          />
+
+          <Select
+            label="Priority"
+            value={priority}
+            onChange={(e) => setPriority(e.target.value)}
+            options={[
+              { value: 'LOW', label: 'Low' },
+              { value: 'MEDIUM', label: 'Medium' },
+              { value: 'HIGH', label: 'High' },
+              { value: 'URGENT', label: 'Urgent' }
+            ]}
+            required
+          />
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-8">
-          {/* Title */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Title
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Task title..."
-              required
-              className="w-full border-0 border-b border-border bg-transparent py-3 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors"
-            />
-          </div>
+        <Input
+          label="Due Date"
+          type="date"
+          value={targetDate}
+          onChange={(e) => setTargetDate(e.target.value)}
+        />
 
-          {/* Details */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Details
-            </label>
-            <textarea
-              value={details}
-              onChange={(e) => setDetails(e.target.value)}
-              placeholder="Add task details..."
-              rows={4}
-              className="w-full border border-border bg-transparent rounded-lg p-4 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors resize-none"
-            />
-          </div>
-
-          {/* Status and Priority */}
-          <div className="grid grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Status
-              </label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="w-full border-0 border-b border-border bg-transparent py-3 text-base text-foreground focus:border-primary focus:outline-none transition-colors"
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Assign To
+          </label>
+          <div className="rounded-xl border border-input bg-background p-3 space-y-1">
+            {users.map((user) => (
+              <label
+                key={user.id}
+                className="flex items-center gap-3 py-2 cursor-pointer hover:bg-muted/50 rounded px-2 transition-colors"
               >
-                <option value="DRAFT">Draft</option>
-                <option value="START">Start</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="REVIEW">Review</option>
-                <option value="APPROVED">Approved</option>
-                <option value="COMPLETED">Completed</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Priority
+                <input
+                  type="checkbox"
+                  checked={assigneeIds.includes(user.id)}
+                  onChange={() => toggleAssignee(user.id)}
+                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                />
+                <span className="text-sm text-foreground">{user.name || user.email}</span>
               </label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-                className="w-full border-0 border-b border-border bg-transparent py-3 text-base text-foreground focus:border-primary focus:outline-none transition-colors"
-              >
-                <option value="LOW">Low</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="HIGH">High</option>
-                <option value="URGENT">Urgent</option>
-              </select>
-            </div>
+            ))}
+            {users.length === 0 && (
+              <p className="text-sm text-muted-foreground py-2">No active users available</p>
+            )}
           </div>
+        </div>
 
-          {/* Due Date */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2 flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Due Date
-            </label>
-            <input
-              type="date"
-              value={targetDate}
-              onChange={(e) => setTargetDate(e.target.value)}
-              className="w-full border-0 border-b border-border bg-transparent py-3 text-base text-foreground focus:border-primary focus:outline-none transition-colors"
-            />
-          </div>
+        <Input
+          label="Attachment URL"
+          type="url"
+          value={attachment}
+          onChange={(e) => setAttachment(e.target.value)}
+          placeholder="https://example.com/file.jpg or https://dropbox.com/..."
+        />
 
-          {/* Assignees */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Assign To
-            </label>
-            <div className="space-y-2">
-              {users.map((user) => (
-                <label
-                  key={user.id}
-                  className="flex items-center gap-3 py-2 cursor-pointer hover:bg-muted/50 rounded px-2 transition-colors"
-                >
-                  <input
-                    type="checkbox"
-                    checked={assigneeIds.includes(user.id)}
-                    onChange={() => toggleAssignee(user.id)}
-                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
-                  />
-                  <span className="text-sm text-foreground">{user.name || user.email}</span>
-                </label>
-              ))}
-              {users.length === 0 && (
-                <p className="text-sm text-muted-foreground">No active users available</p>
-              )}
-            </div>
-          </div>
-
-          {/* Attachment/Link */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2 flex items-center gap-2">
-              <LinkIcon className="h-4 w-4" />
-              Attachment URL
-            </label>
-            <input
-              type="url"
-              value={attachment}
-              onChange={(e) => setAttachment(e.target.value)}
-              placeholder="https://example.com/file.jpg or https://dropbox.com/..."
-              className="w-full border-0 border-b border-border bg-transparent py-3 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors"
-            />
-            <p className="text-xs text-muted-foreground mt-2">
-              Add a link to an image or file (Dropbox, Google Drive, etc.)
-            </p>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-4 pt-4 border-t border-border">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={!title.trim() || loading}
-              className="px-6 py-2 bg-primary text-primary-foreground rounded-lg text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-            >
-              {loading ? 'Saving...' : initialData ? 'Update Task' : 'Create Task'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="flex justify-end gap-3 pt-6 mt-2">
+          <Button type="button" variant="outline" onClick={onClose} className="px-6">
+            Cancel
+          </Button>
+          <Button type="submit" disabled={!title.trim() || loading} className="px-6">
+            {loading ? 'Saving...' : initialData ? 'Update Task' : 'Create Task'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   )
 }
