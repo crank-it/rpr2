@@ -143,7 +143,7 @@ export interface Task {
   attachment: string | null
   assignee_ids: string[]
   target_date: string | null
-  status: 'DRAFT' | 'IN_PROGRESS' | 'REVIEW' | 'APPROVED' | 'COMPLETED'
+  status: 'DRAFT' | 'START' | 'IN_PROGRESS' | 'REVIEW' | 'APPROVED' | 'COMPLETED'
   created_at: string
   updated_at: string
   completed_at: string | null
