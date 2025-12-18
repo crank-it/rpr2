@@ -14,6 +14,7 @@ interface ActivityItem {
   time: string
   timestamp: string
   linkHref?: string | null
+  isEntityDeleted?: boolean
 
   // Comment-specific fields
   commentId?: string
@@ -39,10 +40,24 @@ export default function ActivityFeedPage() {
   const [loadingReplies, setLoadingReplies] = useState<Set<string>>(new Set())
   const [replyText, setReplyText] = useState<Record<string, string>>({})
   const [submittingReply, setSubmittingReply] = useState<string | null>(null)
+  const [currentUserName, setCurrentUserName] = useState<string>('User')
 
   useEffect(() => {
     fetchActivityData()
+    fetchCurrentUser()
   }, [])
+
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await fetch('/api/users/me')
+      if (response.ok) {
+        const userData = await response.json()
+        setCurrentUserName(userData.name || 'User')
+      }
+    } catch (error) {
+      console.error('Failed to fetch current user:', error)
+    }
+  }
 
   const fetchActivityData = async () => {
     try {
@@ -114,7 +129,7 @@ export default function ActivityFeedPage() {
           entityType,
           entityId,
           content,
-          author: 'User',
+          author: currentUserName,
           parentId: commentId
         })
       })
@@ -210,7 +225,7 @@ export default function ActivityFeedPage() {
                   <div className="py-6">
                     <div className="flex items-baseline justify-between gap-8">
                       <div className="flex-1 min-w-0">
-                        {activity.linkHref ? (
+                        {activity.linkHref && !activity.isEntityDeleted ? (
                           <Link
                             href={activity.linkHref}
                             className="group"
@@ -223,6 +238,7 @@ export default function ActivityFeedPage() {
                         ) : (
                           <h3 className="text-base font-medium text-foreground mb-1">
                             "{activity.title}" was {activity.action || 'updated'}
+                            {activity.isEntityDeleted && <span className="text-muted-foreground text-sm ml-2">(deleted)</span>}
                           </h3>
                         )}
                         <div className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -243,7 +259,7 @@ export default function ActivityFeedPage() {
                   // Comment item
                   <div className="py-6">
                     <div className="flex-1 min-w-0">
-                      {activity.linkHref ? (
+                      {activity.linkHref && !activity.isEntityDeleted ? (
                         <Link
                           href={activity.linkHref}
                           className="group"
@@ -256,6 +272,7 @@ export default function ActivityFeedPage() {
                       ) : (
                         <h3 className="text-base font-medium text-foreground mb-1">
                           {activity.title}
+                          {activity.isEntityDeleted && <span className="text-muted-foreground text-sm ml-2">(deleted)</span>}
                         </h3>
                       )}
 
@@ -263,18 +280,22 @@ export default function ActivityFeedPage() {
 
                       <div className="flex items-center gap-3 text-sm text-muted-foreground mb-3">
                         <span>{activity.time}</span>
-                        <span>·</span>
-                        <button
-                          onClick={() => toggleComment(
-                            activity.commentId!,
-                            activity.entityType!,
-                            activity.entityId!
-                          )}
-                          className="text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
-                        >
-                          <MessageCircle className="h-3 w-3" />
-                          {activity.replyCount === 0 ? 'Reply' : `${activity.replyCount} ${activity.replyCount === 1 ? 'reply' : 'replies'}`}
-                        </button>
+                        {!activity.isEntityDeleted && (
+                          <>
+                            <span>·</span>
+                            <button
+                              onClick={() => toggleComment(
+                                activity.commentId!,
+                                activity.entityType!,
+                                activity.entityId!
+                              )}
+                              className="text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
+                            >
+                              <MessageCircle className="h-3 w-3" />
+                              {activity.replyCount === 0 ? 'Reply' : `${activity.replyCount} ${activity.replyCount === 1 ? 'reply' : 'replies'}`}
+                            </button>
+                          </>
+                        )}
                       </div>
 
                       {/* Expanded comment with replies */}

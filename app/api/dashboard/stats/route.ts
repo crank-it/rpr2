@@ -69,19 +69,30 @@ export async function GET() {
       let entityName = activity.description || 'Activity'
       let entityId = null
       let linkHref = null
+      let isEntityDeleted = false
 
       if (activity.project_id) {
         const project = projectMap[activity.project_id]
         entityType = 'Project'
-        entityName = project?.title || activity.description
         entityId = activity.project_id
-        linkHref = `/projects/${activity.project_id}`
+        if (project) {
+          entityName = project.title
+          linkHref = `/projects/${activity.project_id}`
+        } else {
+          entityName = activity.description || 'Deleted Project'
+          isEntityDeleted = true
+        }
       } else if (activity.customer_id) {
         const customer = customerMap[activity.customer_id]
         entityType = 'Customer'
-        entityName = customer?.name || activity.description
         entityId = activity.customer_id
-        linkHref = `/customers/${activity.customer_id}`
+        if (customer) {
+          entityName = customer.name
+          linkHref = `/customers/${activity.customer_id}`
+        } else {
+          entityName = activity.description || 'Deleted Customer'
+          isEntityDeleted = true
+        }
       }
 
       // Get user name
@@ -109,7 +120,8 @@ export async function GET() {
         time: getRelativeTime(new Date(activity.created_at)),
         timestamp: activity.created_at,
         entityId,
-        linkHref
+        linkHref,
+        isEntityDeleted
       }
     })
 
@@ -119,17 +131,28 @@ export async function GET() {
       let entityName = ''
       let entityId = comment.entity_id
       let linkHref = null
+      let isEntityDeleted = false
 
       if (comment.entity_type === 'PROJECT') {
         const project = projectMap[comment.entity_id]
         entityType = 'Project Comment'
-        entityName = project?.title || 'Project'
-        linkHref = `/projects/${comment.entity_id}`
+        if (project) {
+          entityName = project.title
+          linkHref = `/projects/${comment.entity_id}`
+        } else {
+          entityName = 'Deleted Project'
+          isEntityDeleted = true
+        }
       } else if (comment.entity_type === 'CUSTOMER') {
         const customer = customerMap[comment.entity_id]
         entityType = 'Customer Comment'
-        entityName = customer?.name || 'Customer'
-        linkHref = `/customers/${comment.entity_id}`
+        if (customer) {
+          entityName = customer.name
+          linkHref = `/customers/${comment.entity_id}`
+        } else {
+          entityName = 'Deleted Customer'
+          isEntityDeleted = true
+        }
       }
 
       return {
@@ -145,7 +168,8 @@ export async function GET() {
         entityId,
         entityType: comment.entity_type,
         linkHref,
-        replyCount: 0 // Will be populated with replies
+        replyCount: 0, // Will be populated with replies
+        isEntityDeleted
       }
     })
 

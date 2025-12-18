@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Send, Loader2, Pencil, Trash2, X, Check } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 interface Comment {
   id: string
   author: string
+  authorId?: string
   authorAvatar?: string
   content: string
   timestamp: string
@@ -71,9 +73,10 @@ export function CommentThread({ entityType, entityId }: CommentThreadProps) {
   const [submitting, setSubmitting] = useState(false)
   const [newComment, setNewComment] = useState('')
   const [userRole, setUserRole] = useState<string>('')
+  const [currentUserId, setCurrentUserId] = useState<string>('')
   const [currentUserName, setCurrentUserName] = useState<string>('User')
 
-  const isAdmin = userRole === 'admin' || userRole === 'superadmin'
+  const isSuperAdmin = userRole === 'superadmin'
 
   // Fetch current user info
   useEffect(() => {
@@ -82,6 +85,7 @@ export function CommentThread({ entityType, entityId }: CommentThreadProps) {
         const response = await fetch('/api/users/me')
         if (response.ok) {
           const data = await response.json()
+          setCurrentUserId(data.id || '')
           setCurrentUserName(data.name || 'User')
           setUserRole(data.role || '')
         }
@@ -92,25 +96,128 @@ export function CommentThread({ entityType, entityId }: CommentThreadProps) {
     fetchCurrentUser()
   }, [])
 
-  useEffect(() => {
-    async function fetchComments() {
-      try {
-        setLoading(true)
-        const response = await fetch(`/api/comments?entityType=${entityType}&entityId=${entityId}`)
-        if (response.ok) {
-          const data = await response.json()
-          // Keep raw timestamps - formatting will be done in the component
-          setComments(data)
-        }
-      } catch (error) {
-        console.error('Failed to fetch comments:', error)
-      } finally {
-        setLoading(false)
+  const fetchComments = useCallback(async () => {
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/comments?entityType=${entityType}&entityId=${entityId}`)
+      if (response.ok) {
+        const data = await response.json()
+        // Keep raw timestamps - formatting will be done in the component
+        setComments(data)
       }
+    } catch (error) {
+      console.error('Failed to fetch comments:', error)
+    } finally {
+      setLoading(false)
     }
+  }, [entityType, entityId])
 
+  useEffect(() => {
     if (entityType && entityId) {
       fetchComments()
+    }
+  }, [entityType, entityId, fetchComments])
+
+  // Real-time subscription for comments
+  useEffect(() => {
+    if (!entityType || !entityId) return
+
+    const channel = supabase
+      .channel(`comments-${entityType}-${entityId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'comments',
+          filter: `entity_type=eq.${entityType}`
+        },
+        (payload) => {
+          const newRecord = payload.new as any
+          const oldRecord = payload.old as any
+
+          // Only process if it matches our entityId
+          if (payload.eventType === 'INSERT') {
+            if (newRecord.entity_id === entityId && !newRecord.deleted_at) {
+              const newComment: Comment = {
+                id: newRecord.id,
+                author: newRecord.author,
+                authorId: newRecord.author_id,
+                content: newRecord.content,
+                timestamp: newRecord.created_at ? newRecord.created_at.replace(' ', 'T') + 'Z' : new Date().toISOString(),
+                replies: []
+              }
+
+              if (newRecord.parent_id) {
+                // It's a reply - add to parent's replies
+                setComments(prev => prev.map(comment => {
+                  if (comment.id === newRecord.parent_id) {
+                    // Check if reply already exists
+                    const exists = comment.replies?.some(r => r.id === newRecord.id)
+                    if (exists) return comment
+                    return {
+                      ...comment,
+                      replies: [...(comment.replies || []), newComment]
+                    }
+                  }
+                  return comment
+                }))
+              } else {
+                // It's a top-level comment
+                setComments(prev => {
+                  // Check if comment already exists
+                  if (prev.some(c => c.id === newRecord.id)) return prev
+                  return [...prev, newComment]
+                })
+              }
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            if (newRecord.entity_id === entityId) {
+              if (newRecord.deleted_at) {
+                // Comment was soft-deleted
+                setComments(prev => prev
+                  .filter(c => c.id !== newRecord.id)
+                  .map(comment => ({
+                    ...comment,
+                    replies: comment.replies?.filter(r => r.id !== newRecord.id) || []
+                  }))
+                )
+              } else {
+                // Comment was edited
+                setComments(prev => prev.map(c => {
+                  if (c.id === newRecord.id) {
+                    return { ...c, content: newRecord.content }
+                  }
+                  // Also check replies
+                  if (c.replies) {
+                    return {
+                      ...c,
+                      replies: c.replies.map(r =>
+                        r.id === newRecord.id ? { ...r, content: newRecord.content } : r
+                      )
+                    }
+                  }
+                  return c
+                }))
+              }
+            }
+          } else if (payload.eventType === 'DELETE') {
+            if (oldRecord.entity_id === entityId) {
+              setComments(prev => prev
+                .filter(c => c.id !== oldRecord.id)
+                .map(comment => ({
+                  ...comment,
+                  replies: comment.replies?.filter(r => r.id !== oldRecord.id) || []
+                }))
+              )
+            }
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
     }
   }, [entityType, entityId])
 
@@ -226,8 +333,9 @@ export function CommentThread({ entityType, entityId }: CommentThreadProps) {
                   entityType={entityType}
                   entityId={entityId}
                   onReplyAdded={handleAddReply}
+                  currentUserId={currentUserId}
                   currentUserName={currentUserName}
-                  isAdmin={isAdmin}
+                  isSuperAdmin={isSuperAdmin}
                   onDelete={handleDeleteComment}
                   onEdit={handleEditComment}
                 />
@@ -272,21 +380,22 @@ interface CommentItemProps {
   entityId: string
   onReplyAdded: (parentId: string, reply: Comment) => void
   isReply?: boolean
+  currentUserId: string
   currentUserName: string
-  isAdmin?: boolean
+  isSuperAdmin?: boolean
   onDelete?: (commentId: string) => void
   onEdit?: (commentId: string, newContent: string) => void
 }
 
-function CommentItem({ comment, entityType, entityId, onReplyAdded, isReply = false, currentUserName, isAdmin = false, onDelete, onEdit }: CommentItemProps) {
+function CommentItem({ comment, entityType, entityId, onReplyAdded, isReply = false, currentUserId, currentUserName, isSuperAdmin = false, onDelete, onEdit }: CommentItemProps) {
   const [showReply, setShowReply] = useState(false)
   const [replyContent, setReplyContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(comment.content)
 
-  const isOwnComment = comment.author === currentUserName
-  const canModify = isOwnComment || isAdmin
+  const isOwnComment = comment.authorId === currentUserId
+  const canModify = isOwnComment || isSuperAdmin
 
   const handleSubmitReply = async () => {
     if (!replyContent.trim() || submitting) return
@@ -465,8 +574,9 @@ function CommentItem({ comment, entityType, entityId, onReplyAdded, isReply = fa
                 entityId={entityId}
                 onReplyAdded={onReplyAdded}
                 isReply={true}
+                currentUserId={currentUserId}
                 currentUserName={currentUserName}
-                isAdmin={isAdmin}
+                isSuperAdmin={isSuperAdmin}
                 onDelete={onDelete}
                 onEdit={onEdit}
               />

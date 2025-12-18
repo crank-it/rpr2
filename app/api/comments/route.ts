@@ -7,21 +7,21 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-async function getCurrentUserName(): Promise<string> {
+async function getCurrentUser(): Promise<{ id: string; name: string; role: string } | null> {
   try {
     const user = await currentUser()
     if (user) {
       const { data: userData } = await supabase
         .from('users')
-        .select('name')
+        .select('id, name, role')
         .eq('id', user.id)
         .single()
-      return userData?.name || 'User'
+      return userData ? { id: userData.id, name: userData.name || 'User', role: userData.role || '' } : null
     }
   } catch (error) {
     console.error('Failed to get current user:', error)
   }
-  return 'User'
+  return null
 }
 
 export async function GET(request: Request) {
@@ -75,6 +75,7 @@ export async function GET(request: Request) {
           acc[parentId].push({
             id: reply.id,
             author: reply.author,
+            authorId: reply.author_id,
             authorEmail: reply.author_email,
             content: reply.content,
             timestamp: reply.created_at,
@@ -90,6 +91,7 @@ export async function GET(request: Request) {
     const transformedComments = (comments || []).map(comment => ({
       id: comment.id,
       author: comment.author,
+      authorId: comment.author_id,
       authorEmail: comment.author_email,
       content: comment.content,
       timestamp: comment.created_at ? comment.created_at.replace(' ', 'T') + 'Z' : null,
@@ -114,7 +116,8 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     const { entityType, entityId, content, author, authorEmail, parentId } = body
-    const performedBy = await getCurrentUserName()
+    const currentUserData = await getCurrentUser()
+    const performedBy = currentUserData?.name || 'User'
 
     if (!entityType || !entityId || !content) {
       return NextResponse.json(
@@ -130,6 +133,7 @@ export async function POST(request: Request) {
         entity_id: entityId,
         content,
         author: author || performedBy,
+        author_id: currentUserData?.id || null,
         author_email: authorEmail || null,
         parent_id: parentId || null
       })
@@ -165,6 +169,7 @@ export async function POST(request: Request) {
     const transformedComment = {
       id: comment.id,
       author: comment.author,
+      authorId: comment.author_id,
       authorEmail: comment.author_email,
       content: comment.content,
       timestamp: comment.created_at ? comment.created_at.replace(' ', 'T') + 'Z' : null,
@@ -188,6 +193,14 @@ export async function PATCH(request: Request) {
     const commentId = searchParams.get('commentId')
     const body = await request.json()
     const { content } = body
+    const currentUserData = await getCurrentUser()
+
+    if (!currentUserData) {
+      return NextResponse.json(
+        { error: 'Not authenticated' },
+        { status: 401 }
+      )
+    }
 
     if (!commentId) {
       return NextResponse.json(
@@ -200,6 +213,31 @@ export async function PATCH(request: Request) {
       return NextResponse.json(
         { error: 'content is required' },
         { status: 400 }
+      )
+    }
+
+    // Fetch the comment to verify ownership
+    const { data: existingComment, error: fetchError } = await supabase
+      .from('comments')
+      .select('*')
+      .eq('id', commentId)
+      .single()
+
+    if (fetchError || !existingComment) {
+      return NextResponse.json(
+        { error: 'Comment not found' },
+        { status: 404 }
+      )
+    }
+
+    // Check if user is the author or a superadmin
+    const isSuperAdmin = currentUserData.role === 'superadmin'
+    const isOwner = existingComment.author_id === currentUserData.id
+
+    if (!isOwner && !isSuperAdmin) {
+      return NextResponse.json(
+        { error: 'You can only edit your own comments' },
+        { status: 403 }
       )
     }
 
@@ -224,6 +262,7 @@ export async function PATCH(request: Request) {
     const transformedComment = {
       id: comment.id,
       author: comment.author,
+      authorId: comment.author_id,
       authorEmail: comment.author_email,
       content: comment.content,
       timestamp: comment.created_at ? comment.created_at.replace(' ', 'T') + 'Z' : null,
@@ -244,7 +283,15 @@ export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const commentId = searchParams.get('commentId')
-    const performedBy = await getCurrentUserName()
+    const currentUserData = await getCurrentUser()
+    const performedBy = currentUserData?.name || 'User'
+
+    if (!currentUserData) {
+      return NextResponse.json(
+        { error: 'Not authenticated' },
+        { status: 401 }
+      )
+    }
 
     if (!commentId) {
       return NextResponse.json(
@@ -253,12 +300,30 @@ export async function DELETE(request: Request) {
       )
     }
 
-    // Fetch comment before deleting for activity log
-    const { data: comment } = await supabase
+    // Fetch comment before deleting for activity log and ownership check
+    const { data: comment, error: fetchError } = await supabase
       .from('comments')
       .select('*')
       .eq('id', commentId)
       .single()
+
+    if (fetchError || !comment) {
+      return NextResponse.json(
+        { error: 'Comment not found' },
+        { status: 404 }
+      )
+    }
+
+    // Check if user is the author or a superadmin
+    const isSuperAdmin = currentUserData.role === 'superadmin'
+    const isOwner = comment.author_id === currentUserData.id
+
+    if (!isOwner && !isSuperAdmin) {
+      return NextResponse.json(
+        { error: 'You can only delete your own comments' },
+        { status: 403 }
+      )
+    }
 
     // Soft delete by setting deleted_at
     const { error } = await supabase
@@ -275,22 +340,20 @@ export async function DELETE(request: Request) {
     }
 
     // Log activity
-    if (comment) {
-      const activityData: any = {
-        type: 'comment_deleted',
-        description: `${performedBy} deleted a comment`,
-        performed_by: performedBy
-      }
-
-      // Link activity to the appropriate entity
-      if (comment.entity_type === 'PROJECT') {
-        activityData.project_id = comment.entity_id
-      } else if (comment.entity_type === 'CUSTOMER') {
-        activityData.customer_id = comment.entity_id
-      }
-
-      await supabase.from('activities').insert(activityData)
+    const activityData: any = {
+      type: 'comment_deleted',
+      description: `${performedBy} deleted a comment`,
+      performed_by: performedBy
     }
+
+    // Link activity to the appropriate entity
+    if (comment.entity_type === 'PROJECT') {
+      activityData.project_id = comment.entity_id
+    } else if (comment.entity_type === 'CUSTOMER') {
+      activityData.customer_id = comment.entity_id
+    }
+
+    await supabase.from('activities').insert(activityData)
 
     return NextResponse.json({ success: true })
   } catch (error) {
