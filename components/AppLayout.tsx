@@ -19,7 +19,8 @@ import {
   Clock,
   CheckSquare,
   X,
-  LogOut
+  LogOut,
+  MessageSquare
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -30,12 +31,51 @@ import { useUser, useClerk } from '@clerk/nextjs'
 
 interface Notification {
   id: string
-  type: 'user_pending' | 'user_approved' | 'user_rejected'
+  type: 'user_pending' | 'user_approved' | 'user_rejected' | 'comment_added' | 'comment_reply'
   message: string
   timestamp: Date
   read: boolean
   userId?: string
   userName?: string
+  entityType?: 'PROJECT' | 'CUSTOMER'
+  entityId?: string
+  entityName?: string
+}
+
+// For localStorage serialization (Date -> string)
+interface StoredNotification extends Omit<Notification, 'timestamp'> {
+  timestamp: string
+}
+
+const NOTIFICATIONS_STORAGE_KEY = 'rpr-notifications'
+
+function loadNotificationsFromStorage(): Notification[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const stored = localStorage.getItem(NOTIFICATIONS_STORAGE_KEY)
+    if (!stored) return []
+    const parsed: StoredNotification[] = JSON.parse(stored)
+    // Convert timestamp strings back to Date objects and filter out old notifications (older than 7 days)
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+    return parsed
+      .map(n => ({ ...n, timestamp: new Date(n.timestamp) }))
+      .filter(n => n.timestamp.getTime() > sevenDaysAgo)
+  } catch {
+    return []
+  }
+}
+
+function saveNotificationsToStorage(notifications: Notification[]) {
+  if (typeof window === 'undefined') return
+  try {
+    const toStore: StoredNotification[] = notifications.map(n => ({
+      ...n,
+      timestamp: n.timestamp.toISOString()
+    }))
+    localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(toStore))
+  } catch {
+    // Ignore storage errors
+  }
 }
 
 const navigation = [
@@ -69,6 +109,9 @@ function NotificationDropdown({
         return <CheckCircle className="h-4 w-4 text-green-500" />
       case 'user_rejected':
         return <XCircle className="h-4 w-4 text-red-500" />
+      case 'comment_added':
+      case 'comment_reply':
+        return <MessageSquare className="h-4 w-4 text-blue-500" />
       default:
         return <UserPlus className="h-4 w-4 text-blue-500" />
     }
@@ -228,12 +271,50 @@ function UserMenu() {
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
+  const { user } = useUser()
   const [isBugReportOpen, setIsBugReportOpen] = useState(false)
   const [pendingUsersCount, setPendingUsersCount] = useState(0)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isNotificationOpen, setIsNotificationOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const mainContentRef = useRef<HTMLElement>(null)
+  const currentUserIdRef = useRef<string | null>(null)
+
+  // Keep ref in sync with state for use in subscription callbacks
+  useEffect(() => {
+    currentUserIdRef.current = currentUserId
+  }, [currentUserId])
+
+  // Fetch current user ID and load notifications from localStorage
+  useEffect(() => {
+    async function init() {
+      // Load persisted notifications
+      const stored = loadNotificationsFromStorage()
+      if (stored.length > 0) {
+        setNotifications(stored)
+      }
+
+      // Fetch current user ID
+      try {
+        const response = await fetch('/api/users/me')
+        if (response.ok) {
+          const data = await response.json()
+          setCurrentUserId(data.id || null)
+        }
+      } catch (error) {
+        console.error('Failed to fetch current user:', error)
+      }
+    }
+    init()
+  }, [])
+
+  // Save notifications to localStorage whenever they change
+  useEffect(() => {
+    if (notifications.length > 0) {
+      saveNotificationsToStorage(notifications)
+    }
+  }, [notifications])
 
   // Close mobile menu and scroll to top when route changes
   useEffect(() => {
@@ -344,26 +425,113 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       )
       .subscribe()
 
+    // Subscribe to comments table changes for comment notifications
+    const commentsChannel = supabase
+      .channel('header-comments-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'comments'
+        },
+        async (payload) => {
+          const newComment = payload.new as {
+            id: string
+            author: string
+            author_id: string
+            content: string
+            entity_type: 'PROJECT' | 'CUSTOMER'
+            entity_id: string
+            parent_id: string | null
+            created_at: string
+          }
+
+          // Don't show notification for own comments
+          if (currentUserIdRef.current && newComment.author_id === currentUserIdRef.current) {
+            return
+          }
+
+          // Fetch entity name via API (has proper permissions)
+          let entityName = ''
+          let entityLabel = ''
+          try {
+            if (newComment.entity_type === 'PROJECT') {
+              const response = await fetch(`/api/projects/${newComment.entity_id}`)
+              if (response.ok) {
+                const project = await response.json()
+                // Project API returns "title" not "name"
+                const projectTitle = project.title || 'Unknown'
+                entityName = projectTitle
+                entityLabel = `project - ${projectTitle}`
+              } else {
+                entityLabel = 'a project'
+              }
+            } else if (newComment.entity_type === 'CUSTOMER') {
+              const response = await fetch(`/api/customers/${newComment.entity_id}`)
+              if (response.ok) {
+                const customer = await response.json()
+                const customerName = customer.name || 'Unknown'
+                entityName = customerName
+                entityLabel = `customer - "${customerName}"`
+              } else {
+                entityLabel = 'a customer'
+              }
+            }
+          } catch (error) {
+            console.error('Failed to fetch entity name:', error)
+            entityLabel = newComment.entity_type === 'PROJECT' ? 'a project' : 'a customer'
+          }
+
+          const notification: Notification = {
+            id: `comment-${newComment.id}`,
+            type: newComment.parent_id ? 'comment_reply' : 'comment_added',
+            message: newComment.parent_id
+              ? `${newComment.author} replied to a comment on ${entityLabel}`
+              : `${newComment.author} commented on ${entityLabel}`,
+            timestamp: new Date(),
+            read: false,
+            entityType: newComment.entity_type,
+            entityId: newComment.entity_id,
+            entityName: entityName
+          }
+
+          setNotifications(prev => [notification, ...prev].slice(0, 50))
+        }
+      )
+      .subscribe()
+
     // Cleanup on unmount
     return () => {
       supabase.removeChannel(usersChannel)
+      supabase.removeChannel(commentsChannel)
     }
   }, [fetchPendingCount])
 
   // Notification handlers
   const handleClearAllNotifications = () => {
     setNotifications([])
+    localStorage.removeItem(NOTIFICATIONS_STORAGE_KEY)
   }
 
   const handleNotificationClick = (notification: Notification) => {
-    // Mark as read
-    setNotifications(prev =>
-      prev.map(n => (n.id === notification.id ? { ...n, read: true } : n))
-    )
+    // Remove the clicked notification from the list
+    setNotifications(prev => prev.filter(n => n.id !== notification.id))
+
     // Close dropdown
     setIsNotificationOpen(false)
-    // Navigate to user management page
-    router.push('/user-management')
+
+    // Navigate based on notification type
+    if (notification.type === 'comment_added' || notification.type === 'comment_reply') {
+      if (notification.entityType === 'PROJECT' && notification.entityId) {
+        router.push(`/projects/${notification.entityId}`)
+      } else if (notification.entityType === 'CUSTOMER' && notification.entityId) {
+        router.push(`/customers/${notification.entityId}`)
+      }
+    } else {
+      // Navigate to user management page for user-related notifications
+      router.push('/user-management')
+    }
   }
 
   const unreadNotificationsCount = notifications.filter(n => !n.read).length
