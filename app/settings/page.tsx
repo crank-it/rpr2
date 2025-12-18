@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Sun, Moon } from 'lucide-react'
 import { FieldBuilderModal } from '@/components/settings/FieldBuilderModal'
+import { useTheme } from '@/components/ThemeProvider'
 
 interface Category {
   id: string
@@ -19,6 +20,7 @@ export default function SettingsPage() {
   const [loadingCategories, setLoadingCategories] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
   const [isFieldBuilderOpen, setIsFieldBuilderOpen] = useState(false)
+  const { theme, setTheme } = useTheme()
 
   useEffect(() => {
     fetchCategories()
@@ -146,14 +148,38 @@ export default function SettingsPage() {
             </div>
             <div className="h-px bg-border" />
             <div className="py-6">
-              <div className="flex items-baseline justify-between gap-8">
+              <div className="flex items-center justify-between gap-8">
                 <div className="flex-1 min-w-0">
                   <h3 className="text-base font-medium text-foreground mb-1">
                     Theme
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    Light
+                    Choose your preferred appearance
                   </p>
+                </div>
+                <div className="flex items-center gap-2 p-1 rounded-xl bg-muted/50">
+                  <button
+                    onClick={() => setTheme('light')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      theme === 'light'
+                        ? 'bg-background text-foreground shadow-soft-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Sun className="h-4 w-4" />
+                    Light
+                  </button>
+                  <button
+                    onClick={() => setTheme('dark')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      theme === 'dark'
+                        ? 'bg-background text-foreground shadow-soft-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Moon className="h-4 w-4" />
+                    Dark
+                  </button>
                 </div>
               </div>
             </div>

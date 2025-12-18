@@ -131,8 +131,13 @@ export function FieldBuilderModal({ isOpen, onClose, categoryId, categoryName }:
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-background w-full max-w-4xl mx-4 rounded-lg shadow-lg max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="relative bg-card w-full max-w-4xl mx-4 rounded-2xl shadow-2xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-8 py-6 border-b border-border">
           <h2 className="text-2xl font-normal text-foreground">
@@ -150,7 +155,7 @@ export function FieldBuilderModal({ isOpen, onClose, categoryId, categoryName }:
         <div className="flex-1 overflow-y-auto p-8">
           <div className="space-y-6">
             {fields.map((field, fieldIndex) => (
-              <div key={field.id} className="border border-border rounded-lg p-6 space-y-4 bg-background">
+              <div key={field.id} className="border border-border rounded-lg p-6 space-y-4 bg-muted/30">
                 <div className="flex items-start gap-3">
                   <div className="mt-3">
                     <GripVertical className="h-5 w-5 text-muted-foreground" />
@@ -168,7 +173,7 @@ export function FieldBuilderModal({ isOpen, onClose, categoryId, categoryName }:
                           placeholder="e.g., Service Type"
                           value={field.name}
                           onChange={(e) => updateField(fieldIndex, { name: e.target.value })}
-                          className="w-full border-0 border-b border-border bg-transparent py-3 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors"
+                          className="w-full h-10 rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                         />
                       </div>
 
@@ -187,7 +192,7 @@ export function FieldBuilderModal({ isOpen, onClose, categoryId, categoryName }:
                             }
                             updateField(fieldIndex, updates)
                           }}
-                          className="w-full border-0 border-b border-border bg-transparent py-3 text-base text-foreground focus:border-primary focus:outline-none transition-colors"
+                          className="w-full h-10 rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                         >
                           <option value="text">Text (Single Line)</option>
                           <option value="textarea">Text (Multi-line)</option>
@@ -217,7 +222,7 @@ export function FieldBuilderModal({ isOpen, onClose, categoryId, categoryName }:
                                 placeholder={`Option ${optionIndex + 1}`}
                                 value={option}
                                 onChange={(e) => updateOption(fieldIndex, optionIndex, e.target.value)}
-                                className="flex-1 border-0 border-b border-border bg-transparent py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors"
+                                className="flex-1 h-10 rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                               />
                               {field.options && field.options.length > 1 && (
                                 <button

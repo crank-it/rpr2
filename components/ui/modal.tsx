@@ -42,13 +42,13 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
       />
 
       {/* Modal */}
-      <div className={cn('relative w-full bg-white rounded-2xl shadow-2xl animate-in fade-in zoom-in duration-200', sizes[size])}>
+      <div className={cn('relative w-full bg-card rounded-2xl shadow-2xl animate-in fade-in zoom-in duration-200', sizes[size])}>
         {/* Header */}
-        <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100">
-          <h2 className="text-2xl font-semibold text-gray-900">{title}</h2>
+        <div className="flex items-center justify-between px-8 py-6 border-b border-border">
+          <h2 className="text-2xl font-semibold text-foreground">{title}</h2>
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-all"
+            className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-all"
           >
             <X className="h-5 w-5" />
           </button>

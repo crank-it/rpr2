@@ -68,10 +68,10 @@ export function BugReportModal({ isOpen, onClose }: BugReportModalProps) {
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-teal-100 mb-4">
             <CheckCircle2 className="h-8 w-8 text-teal-600" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          <h3 className="text-lg font-semibold text-foreground mb-2">
             Thank you for your feedback!
           </h3>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             We've received your report and will look into it shortly.
           </p>
         </div>

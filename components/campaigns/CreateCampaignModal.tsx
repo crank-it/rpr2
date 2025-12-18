@@ -169,7 +169,7 @@ export function CreateCampaignModal({ isOpen, onClose, onCampaignCreated, initia
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Info */}
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Campaign Details</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-3">Campaign Details</h3>
           <div className="space-y-4">
             <Input
               label="Campaign Name"
@@ -217,7 +217,7 @@ export function CreateCampaignModal({ isOpen, onClose, onCampaignCreated, initia
 
         {/* Timeline */}
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Campaign Timeline</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-3">Campaign Timeline</h3>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <Input
@@ -238,7 +238,7 @@ export function CreateCampaignModal({ isOpen, onClose, onCampaignCreated, initia
 
             {formData.audience?.toUpperCase() === 'BOTH' && (
               <div className="p-4 bg-teal-50 border border-teal-200 rounded-md">
-                <p className="text-sm font-medium text-gray-900 mb-3">Coordinated Launch Phases</p>
+                <p className="text-sm font-medium text-foreground mb-3">Coordinated Launch Phases</p>
                 <div className="grid grid-cols-3 gap-3">
                   <Input
                     label="Distributor Preview"
@@ -264,7 +264,7 @@ export function CreateCampaignModal({ isOpen, onClose, onCampaignCreated, initia
                     onChange={(e) => setFormData({ ...formData, consumerLaunchDate: e.target.value })}
                   />
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-muted-foreground mt-2">
                   Stagger your launch for maximum impact: Preview → Train → Tease → Launch
                 </p>
               </div>
@@ -274,7 +274,7 @@ export function CreateCampaignModal({ isOpen, onClose, onCampaignCreated, initia
 
         {/* Assets */}
         <div className="relative">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Campaign Assets <span className="font-normal text-gray-500">(Optional)</span></h3>
+          <h3 className="text-sm font-semibold text-foreground mb-3">Campaign Assets <span className="font-normal text-muted-foreground">(Optional)</span></h3>
           <MultiSelect
             label="Select Assets"
             placeholder="Choose assets for this campaign..."
@@ -286,7 +286,7 @@ export function CreateCampaignModal({ isOpen, onClose, onCampaignCreated, initia
             onChange={setSelectedAssetIds}
           />
           {selectedAssetIds.length > 0 && (
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="text-xs text-muted-foreground mt-2">
               {selectedAssetIds.length} asset{selectedAssetIds.length > 1 ? 's' : ''} selected
             </p>
           )}
@@ -294,7 +294,7 @@ export function CreateCampaignModal({ isOpen, onClose, onCampaignCreated, initia
 
         {/* Budget & Goals */}
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Budget & Objectives</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-3">Budget & Objectives</h3>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <Input

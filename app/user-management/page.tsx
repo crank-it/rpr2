@@ -171,8 +171,8 @@ export default function UserManagementPage() {
                           <span className="text-xs text-muted-foreground">Wants:</span>
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
                             user.role === "admin"
-                              ? "bg-red-100 text-red-700"
-                              : "bg-gray-100 text-gray-700"
+                              ? "bg-red-500/10 text-red-500"
+                              : "bg-muted text-muted-foreground"
                           }`}>
                             {user.role === "admin" ? (
                               <Shield className="h-3 w-3" />
@@ -246,7 +246,7 @@ export default function UserManagementPage() {
                             value={user.role}
                             onChange={(e) => handleRoleChange(user.id, e.target.value)}
                             disabled={actionLoading === user.id}
-                            className="text-sm border-0 border-b border-border bg-transparent py-1 text-foreground focus:border-primary focus:outline-none transition-colors disabled:opacity-50"
+                            className="text-sm rounded-lg border border-input bg-background px-2 py-1 text-foreground focus:border-primary focus:outline-none transition-colors disabled:opacity-50"
                           >
                             <option value="admin">Admin</option>
                             <option value="user">User</option>
@@ -256,7 +256,7 @@ export default function UserManagementPage() {
                             value={user.status}
                             onChange={(e) => handleStatusChange(user.id, e.target.value)}
                             disabled={actionLoading === user.id}
-                            className="text-sm border-0 border-b border-border bg-transparent py-1 text-foreground focus:border-primary focus:outline-none transition-colors disabled:opacity-50"
+                            className="text-sm rounded-lg border border-input bg-background px-2 py-1 text-foreground focus:border-primary focus:outline-none transition-colors disabled:opacity-50"
                           >
                             <option value="active">Active</option>
                             <option value="deactivated">Deactivated</option>

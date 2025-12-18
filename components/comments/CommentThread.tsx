@@ -62,7 +62,7 @@ function RelativeTime({ timestamp }: { timestamp: string }) {
     return () => clearInterval(interval)
   }, [timestamp])
 
-  return <span className="text-sm text-gray-500">{formattedTime}</span>
+  return <span className="text-sm text-muted-foreground">{formattedTime}</span>
 }
 
 export function CommentThread({ entityType, entityId }: CommentThreadProps) {

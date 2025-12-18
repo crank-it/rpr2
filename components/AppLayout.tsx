@@ -88,10 +88,10 @@ function NotificationDropdown({
   }
 
   return (
-    <div className="absolute right-0 mt-2 w-80 rounded-lg bg-white shadow-lg border z-50">
-      <div className="flex items-center justify-between px-4 py-3 border-b">
+    <div className="absolute right-0 mt-2 w-80 rounded-lg bg-card shadow-lg border border-border z-50">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+          <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
           {unreadCount > 0 && (
             <span className="bg-red-500 text-white text-xs font-medium px-1.5 py-0.5 rounded-full">
               {unreadCount}
@@ -101,7 +101,7 @@ function NotificationDropdown({
         {notifications.length > 0 && (
           <button
             onClick={onClearAll}
-            className="text-xs text-gray-500 hover:text-gray-700"
+            className="text-xs text-muted-foreground hover:text-foreground"
           >
             Clear all
           </button>
@@ -110,16 +110,16 @@ function NotificationDropdown({
       <div className="max-h-80 overflow-y-auto">
         {notifications.length === 0 ? (
           <div className="px-4 py-8 text-center">
-            <Bell className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-            <p className="text-sm text-gray-500">No notifications</p>
+            <Bell className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">No notifications</p>
           </div>
         ) : (
           notifications.map((notification) => (
             <div
               key={notification.id}
               onClick={() => onNotificationClick(notification)}
-              className={`px-4 py-3 border-b last:border-b-0 hover:bg-gray-50 cursor-pointer transition-colors ${
-                !notification.read ? 'bg-blue-50/50' : ''
+              className={`px-4 py-3 border-b border-border last:border-b-0 hover:bg-muted cursor-pointer transition-colors ${
+                !notification.read ? 'bg-primary/5' : ''
               }`}
             >
               <div className="flex items-start gap-3">
@@ -127,10 +127,10 @@ function NotificationDropdown({
                   {getIcon(notification.type)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm ${!notification.read ? 'font-medium text-gray-900' : 'text-gray-700'}`}>
+                  <p className={`text-sm ${!notification.read ? 'font-medium text-foreground' : 'text-foreground/80'}`}>
                     {notification.message}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     {formatTime(notification.timestamp)}
                   </p>
                 </div>
@@ -161,7 +161,7 @@ function UserMenu() {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 rounded-full hover:bg-gray-100 p-1 transition-colors"
+        className="flex items-center gap-2 rounded-full hover:bg-muted p-1 transition-colors"
       >
         {user.imageUrl ? (
           <img
@@ -170,7 +170,7 @@ function UserMenu() {
             className="h-8 w-8 rounded-full object-cover"
           />
         ) : (
-          <div className="h-8 w-8 rounded-full bg-teal-600 flex items-center justify-center text-white text-sm font-medium">
+          <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-medium">
             {initials}
           </div>
         )}
@@ -182,8 +182,8 @@ function UserMenu() {
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute right-0 mt-2 w-64 rounded-lg bg-white shadow-lg border z-50">
-            <div className="px-4 py-3 border-b">
+          <div className="absolute right-0 mt-2 w-64 rounded-lg bg-card shadow-lg border border-border z-50">
+            <div className="px-4 py-3 border-b border-border">
               <div className="flex items-center gap-3">
                 {user.imageUrl ? (
                   <img
@@ -192,15 +192,15 @@ function UserMenu() {
                     className="h-10 w-10 rounded-full object-cover"
                   />
                 ) : (
-                  <div className="h-10 w-10 rounded-full bg-teal-600 flex items-center justify-center text-white font-medium">
+                  <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-medium">
                     {initials}
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
+                  <p className="text-sm font-medium text-foreground truncate">
                     {user.fullName || 'User'}
                   </p>
-                  <p className="text-xs text-gray-500 truncate">
+                  <p className="text-xs text-muted-foreground truncate">
                     {user.emailAddresses[0]?.emailAddress}
                   </p>
                 </div>
@@ -212,9 +212,9 @@ function UserMenu() {
                   setIsOpen(false)
                   signOut({ redirectUrl: '/sign-in' })
                 }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/80 hover:bg-muted transition-colors"
               >
-                <LogOut className="h-4 w-4 text-gray-500" />
+                <LogOut className="h-4 w-4 text-muted-foreground" />
                 Sign out
               </button>
             </div>
@@ -378,7 +378,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <UserSyncProvider>
-      <div className="flex h-screen bg-gray-50">
+      <div className="flex h-screen bg-background">
         {/* Mobile Sidebar Overlay */}
         {isMobileMenuOpen && (
           <div
@@ -390,17 +390,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Mobile Full-Screen Menu */}
         <div
           className={`
-            fixed inset-0 z-50 bg-white flex flex-col lg:hidden transition-opacity duration-300 ease-in-out
+            fixed inset-0 z-50 bg-card flex flex-col lg:hidden transition-opacity duration-300 ease-in-out
             ${isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
           `}
         >
           {/* Header with close button */}
-          <div className="flex h-16 items-center justify-between px-6 border-b border-slate-200">
+          <div className="flex h-16 items-center justify-between px-6 border-b border-border">
             <div className="flex flex-col">
-              <div className="text-xl font-light tracking-wider text-gray-900" style={{ letterSpacing: '0.1em' }}>
+              <div className="text-xl font-light tracking-wider text-foreground" style={{ letterSpacing: '0.1em' }}>
                 RPR HAIRCARE
               </div>
-              <p className="text-xs text-gray-500 mt-0.5">Operations Hub</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Operations Hub</p>
             </div>
             <Button
               variant="ghost"
@@ -435,7 +435,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 )
               })}
 
-              <div className="border-t border-slate-200 pt-4 mt-4 space-y-2">
+              <div className="border-t border-border pt-4 mt-4 space-y-2">
                 {secondaryNavigation.map((item) => {
                   const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
                   const showPendingDot = item.name === 'User Management' && pendingUsersCount > 0
@@ -467,14 +467,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Desktop Sidebar */}
-        <aside className="hidden lg:flex lg:w-64 lg:flex-col border-r border-slate-300 bg-white">
+        <aside className="hidden lg:flex lg:w-64 lg:flex-col border-r border-border bg-card">
           <div className="flex h-16 items-center gap-3 px-6">
             <Link href="/" className="flex flex-col cursor-pointer">
               <div className="flex flex-col">
-                <div className="text-xl font-light tracking-wider text-gray-900" style={{ letterSpacing: '0.1em' }}>
+                <div className="text-xl font-light tracking-wider text-foreground" style={{ letterSpacing: '0.1em' }}>
                   RPR HAIRCARE
                 </div>
-                <p className="text-xs text-gray-500 mt-0.5">Operations Hub</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Operations Hub</p>
               </div>
             </Link>
           </div>
@@ -502,7 +502,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               })}
             </div>
 
-            <div className="border-t border-slate-300 space-y-1">
+            <div className="border-t border-border space-y-1">
               {secondaryNavigation.map((item) => {
                 const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
                 const showPendingDot = item.name === 'User Management' && pendingUsersCount > 0 
@@ -555,7 +555,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Main Content */}
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Header */}
-          <header className="flex h-16 items-center gap-4 border-b border-slate-300 bg-white px-6">
+          <header className="flex h-16 items-center gap-4 border-b border-border bg-card px-6">
             <Button
               variant="ghost"
               size="icon"
@@ -599,7 +599,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </header>
 
           {/* Page Content */}
-          <main ref={mainContentRef} className="flex-1 overflow-y-auto bg-gray-50">
+          <main ref={mainContentRef} className="flex-1 overflow-y-auto bg-background">
             <div className="page-container">
               {children}
             </div>

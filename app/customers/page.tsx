@@ -3,6 +3,8 @@
 import { Plus, Search } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { CreateCustomerModal } from '@/components/customers/CreateCustomerModal'
 
 interface Customer {
   id: string
@@ -21,9 +23,11 @@ interface Customer {
 }
 
 export default function CustomersPage() {
+  const router = useRouter()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
 
   const fetchCustomers = async () => {
     setLoading(true)
@@ -53,6 +57,27 @@ export default function CustomersPage() {
 
   const formatCustomerType = (type: string) => {
     return type.charAt(0) + type.slice(1).toLowerCase()
+  }
+
+  const handleCustomerCreated = async (customerData: any) => {
+    try {
+      const response = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(customerData)
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create customer')
+      }
+
+      const newCustomer = await response.json()
+      setIsCreateModalOpen(false)
+      router.push(`/customers/${newCustomer.id}`)
+    } catch (error) {
+      console.error('Failed to create customer:', error)
+      alert('Failed to create customer. Please try again.')
+    }
   }
 
   // Get first letter for avatar
@@ -97,13 +122,13 @@ export default function CustomersPage() {
               {searchQuery ? 'No customers found' : 'No customers yet'}
             </p>
             {!searchQuery && (
-              <Link
-                href="/customers/new"
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
                 className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors"
               >
                 <Plus className="h-4 w-4" />
                 Add your first customer
-              </Link>
+              </button>
             )}
           </div>
         ) : (
@@ -165,12 +190,19 @@ export default function CustomersPage() {
         )}
 
         {/* Floating action button */}
-        <Link
-          href="/customers/new"
+        <button
+          onClick={() => setIsCreateModalOpen(true)}
           className="fixed bottom-8 right-8 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-soft-lg hover:shadow-soft-xl transition-all hover:scale-105"
         >
           <Plus className="h-6 w-6" />
-        </Link>
+        </button>
+
+        {/* Create Customer Modal */}
+        <CreateCustomerModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onCustomerCreated={handleCustomerCreated}
+        />
       </div>
     </div>
   )

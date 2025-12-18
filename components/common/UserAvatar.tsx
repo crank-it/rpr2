@@ -71,7 +71,7 @@ export function UserAvatar({ userId, size = 'md', showName = false }: UserAvatar
 
   if (loading) {
     return (
-      <div className={`${sizeClasses[size]} rounded-full bg-gray-200 animate-pulse`} />
+      <div className={`${sizeClasses[size]} rounded-full bg-muted animate-pulse`} />
     )
   }
 
@@ -91,7 +91,7 @@ export function UserAvatar({ userId, size = 'md', showName = false }: UserAvatar
     'bg-teal-500'
   ]
   const colorIndex = userId ? userId.charCodeAt(0) % colors.length : 0
-  const bgColor = isDeactivated ? 'bg-gray-400' : colors[colorIndex]
+  const bgColor = isDeactivated ? 'bg-muted-foreground' : colors[colorIndex]
 
   return (
     <div className="flex items-center gap-2">
@@ -109,7 +109,7 @@ export function UserAvatar({ userId, size = 'md', showName = false }: UserAvatar
         </div>
       )}
       {showName && (
-        <span className={`text-sm ${isDeactivated ? 'text-gray-500 italic' : 'text-gray-700'}`}>
+        <span className={`text-sm ${isDeactivated ? 'text-muted-foreground italic' : 'text-foreground'}`}>
           {displayName}
         </span>
       )}

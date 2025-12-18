@@ -122,7 +122,7 @@ export function MultiSelect({
               placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-1.5 text-sm border border-input rounded-lg focus:outline-none focus:border-primary"
+              className="w-full px-3 py-1.5 text-sm border border-input rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
               onClick={(e) => e.stopPropagation()}
             />
           </div>

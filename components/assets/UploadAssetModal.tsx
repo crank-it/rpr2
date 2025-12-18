@@ -123,7 +123,7 @@ export function UploadAssetModal({ isOpen, onClose, onAssetUploaded, initialData
       case 'DOCUMENT':
         return <FileTextIcon className="h-8 w-8 text-red-500" />
       default:
-        return <FileIcon className="h-8 w-8 text-gray-500" />
+        return <FileIcon className="h-8 w-8 text-muted-foreground" />
     }
   }
 
@@ -201,7 +201,7 @@ export function UploadAssetModal({ isOpen, onClose, onAssetUploaded, initialData
         {/* File Upload Area */}
         <div
           className={`relative p-6 border-2 border-dashed rounded-lg text-center transition-colors ${
-            selectedFile ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-gray-400'
+            selectedFile ? 'border-green-400 bg-green-500/10' : 'border-border hover:border-muted-foreground'
           }`}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
@@ -223,7 +223,7 @@ export function UploadAssetModal({ isOpen, onClose, onAssetUploaded, initialData
               )}
               <div className="text-left">
                 <p className="font-medium text-sm truncate max-w-[200px]">{selectedFile.name}</p>
-                <p className="text-xs text-gray-500">{formatFileSize(selectedFile.size)}</p>
+                <p className="text-xs text-muted-foreground">{formatFileSize(selectedFile.size)}</p>
               </div>
               <Button
                 type="button"
@@ -245,18 +245,18 @@ export function UploadAssetModal({ isOpen, onClose, onAssetUploaded, initialData
               ) : (
                 getFileIcon(formData.type)
               )}
-              <p className="text-sm text-gray-600">Current file</p>
-              <p className="text-xs text-gray-500">
+              <p className="text-sm text-muted-foreground">Current file</p>
+              <p className="text-xs text-muted-foreground">
                 Click or drag to replace with a new file
               </p>
             </div>
           ) : (
             <>
-              <Upload className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-              <p className="text-sm font-medium text-gray-700 mb-1">
+              <Upload className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+              <p className="text-sm font-medium text-foreground mb-1">
                 Drag and drop your file here
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 or click to browse (Images, Videos, PDFs, Documents)
               </p>
             </>

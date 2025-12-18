@@ -3,6 +3,7 @@ import { Dosis, Lato } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { AppLayout } from "@/components/AppLayout";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 export const dynamic = 'force-dynamic';
 
@@ -40,8 +41,26 @@ export default function RootLayout({
       signUpFallbackRedirectUrl="/sign-up/callback"
     >
       <html lang="en" suppressHydrationWarning>
+        <head>
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                (function() {
+                  try {
+                    var theme = localStorage.getItem('theme');
+                    if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                      document.documentElement.classList.add('dark');
+                    }
+                  } catch (e) {}
+                })();
+              `,
+            }}
+          />
+        </head>
         <body className={`${dosis.variable} ${lato.variable} font-body antialiased`} suppressHydrationWarning>
-          <AppLayout>{children}</AppLayout>
+          <ThemeProvider>
+            <AppLayout>{children}</AppLayout>
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

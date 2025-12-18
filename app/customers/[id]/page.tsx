@@ -3,15 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Mail, Phone, User, Calendar, Building2, FolderOpen, Activity, Pencil } from 'lucide-react'
+import { ArrowLeft, Mail, Phone, Building2, FolderOpen, Pencil, Globe, DollarSign, Award, User, Plus } from 'lucide-react'
 import { CommentThread } from '@/components/comments/CommentThread'
 import { CreateCustomerModal } from '@/components/customers/CreateCustomerModal'
 import { formatDate } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 
 interface Customer {
   id: string
@@ -37,14 +33,32 @@ interface Project {
   created_at: string
 }
 
-const getCustomerTypeVariant = (type: string) => {
-  const variants: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
-    'SALON': 'default',
-    'DISTRIBUTOR': 'secondary',
-    'CORPORATE': 'outline',
-    'VIP': 'destructive'
+const formatCustomerType = (type: string) => {
+  return type.charAt(0) + type.slice(1).toLowerCase()
+}
+
+const formatSpendingTier = (tier: string | null) => {
+  if (!tier) return null
+  const tiers: Record<string, string> = {
+    'TOP_1': 'Top 1%',
+    'TOP_3': 'Top 3%',
+    'TOP_10': 'Top 10%'
   }
-  return variants[type] || 'secondary'
+  return tiers[tier] || tier
+}
+
+const formatCurrency = (amount: number | null) => {
+  if (!amount) return null
+  return new Intl.NumberFormat('en-AU', {
+    style: 'currency',
+    currency: 'AUD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount)
+}
+
+const formatStatus = (status: string) => {
+  return status.replace('_', ' ').charAt(0) + status.replace('_', ' ').slice(1).toLowerCase()
 }
 
 export default function CustomerDetailPage() {
@@ -86,6 +100,7 @@ export default function CustomerDetailPage() {
   }
 
   useEffect(() => {
+    window.scrollTo(0, 0)
     fetchCustomer()
     fetchProjects()
   }, [customerId])
@@ -119,221 +134,349 @@ export default function CustomerDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-gray-900 border-r-transparent"></div>
+      <div className="min-h-screen bg-background">
+        <div className="mx-auto max-w-3xl px-6 py-16">
+          <div className="flex items-center justify-center py-24">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-solid border-foreground border-r-transparent" />
+          </div>
+        </div>
       </div>
     )
   }
 
   if (!customer) {
     return (
-      <div className="text-center py-12">
-        <h2 className="text-lg font-semibold">Customer not found</h2>
-        <Link href="/customers" className="text-teal-600 hover:underline mt-2 inline-block">
-          Back to Customers
-        </Link>
+      <div className="min-h-screen bg-background">
+        <div className="mx-auto max-w-3xl px-6 py-16">
+          <div className="text-center py-24">
+            <h2 className="text-xl font-medium text-foreground mb-2">Customer not found</h2>
+            <Link href="/customers" className="text-sm text-primary hover:text-primary/80 transition-colors">
+              Back to Customers
+            </Link>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Breadcrumb */}
-      <div>
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-3xl px-6 py-16">
+
+        {/* Back link */}
         <Link
           href="/customers"
-          className="inline-flex items-center text-sm text-muted-foreground hover:text-gray-900 mb-4"
+          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors mb-12"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Customers
         </Link>
 
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight mb-2">{customer.name}</h1>
-            <div className="flex items-center gap-3">
-              <Badge variant={getCustomerTypeVariant(customer.type)}>
-                {customer.type}
-              </Badge>
-              {/* {customer.primary_contact && (
-                <span className="text-sm text-muted-foreground">
-                  Contact: {customer.primary_contact}
-                </span>
-              )} */}
-            </div>
+        {/* Header */}
+        <div className="text-center mb-16">
+          <div className="flex items-center justify-center gap-4 mb-3">
+            <h1 className="text-5xl font-normal text-foreground tracking-tight">
+              {customer.name}
+            </h1>
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Pencil className="h-5 w-5" />
+            </button>
           </div>
-          <Button variant="outline" onClick={() => setIsEditModalOpen(true)}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit
-          </Button>
+          <p className="text-sm text-muted-foreground">
+            {formatCustomerType(customer.type)}
+            {customer.primary_contact && ` · ${customer.primary_contact}`}
+            {` · Since ${formatDate(customer.created_at)}`}
+          </p>
         </div>
-      </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        {/* Recent Projects */}
-        <Card className="col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Recent Projects</CardTitle>
-              <CardDescription>Active and completed projects</CardDescription>
-            </div>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/projects">View All →</Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {projects.length === 0 ? (
-              <div className="text-sm text-muted-foreground text-center py-8">
-                No projects yet
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {projects.slice(0, 5).map((project) => (
-                  <Link
-                    key={project.id}
-                    href={`/projects/${project.id}`}
-                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium text-sm">{project.title}</p>
-                        {project.due_date && (
-                          <p className="text-xs text-muted-foreground">
-                            Due: {formatDate(project.due_date)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <Badge variant={project.status === 'COMPLETED' ? 'default' : project.status === 'IN_PROGRESS' ? 'default' : 'secondary'}>
-                      {project.status.replace('_', ' ')}
-                    </Badge>
-                  </Link>
-                ))}
-                {projects.length > 5 && (
-                  <p className="text-sm text-muted-foreground text-center pt-2">
-                    +{projects.length - 5} more projects
-                  </p>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Contact Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Contact Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        {/* Contact Details Card */}
+        <div className="mb-12">
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">
+            Contact
+          </h2>
+          <div className="rounded-xl border border-border bg-card p-6 space-y-0">
+            {/* Primary Contact */}
             {customer.primary_contact && (
               <>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    Primary Contact
-                  </p>
-                  <p className="text-sm font-medium">{customer.primary_contact}</p>
+                <div className="py-4">
+                  <div className="flex items-baseline justify-between gap-8">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-medium text-foreground mb-1">
+                        Primary Contact
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {customer.primary_contact}
+                      </p>
+                    </div>
+                    <User className="h-4 w-4 text-muted-foreground" />
+                  </div>
                 </div>
-                <Separator />
+                <div className="h-px bg-border" />
               </>
             )}
+
+            {/* Email */}
             {customer.email && (
               <>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
-                    <Mail className="h-4 w-4" />
-                    Email
-                  </p>
-                  <a
-                    href={`mailto:${customer.email}`}
-                    className="text-sm font-medium text-gray-900 hover:underline"
-                  >
-                    {customer.email}
-                  </a>
+                <div className="py-4">
+                  <div className="flex items-baseline justify-between gap-8">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-medium text-foreground mb-1">
+                        Email
+                      </h3>
+                      <a
+                        href={`mailto:${customer.email}`}
+                        className="text-sm text-primary hover:text-primary/80 transition-colors"
+                      >
+                        {customer.email}
+                      </a>
+                    </div>
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                  </div>
                 </div>
-                <Separator />
+                <div className="h-px bg-border" />
               </>
             )}
+
+            {/* Phone */}
             {customer.phone && (
               <>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
-                    <Phone className="h-4 w-4" />
-                    Phone
-                  </p>
-                  <a
-                    href={`tel:${customer.phone}`}
-                    className="text-sm font-medium text-gray-900"
-                  >
-                    {customer.phone}
-                  </a>
+                <div className="py-4">
+                  <div className="flex items-baseline justify-between gap-8">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-medium text-foreground mb-1">
+                        Phone
+                      </h3>
+                      <a
+                        href={`tel:${customer.phone}`}
+                        className="text-sm text-primary hover:text-primary/80 transition-colors"
+                      >
+                        {customer.phone}
+                      </a>
+                    </div>
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                  </div>
                 </div>
-                <Separator />
+                <div className="h-px bg-border" />
               </>
             )}
+
+            {/* Address */}
             {customer.address && (
               <>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
-                    <Building2 className="h-4 w-4" />
-                    Address
-                  </p>
-                  <p className="text-sm font-medium">{customer.address}</p>
+                <div className="py-4">
+                  <div className="flex items-baseline justify-between gap-8">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-medium text-foreground mb-1">
+                        Address
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {customer.address}
+                      </p>
+                    </div>
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                  </div>
                 </div>
-                <Separator />
+                <div className="h-px bg-border" />
               </>
             )}
+
+            {/* Website */}
             {customer.website && (
-              <>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Website</p>
-                  <a
-                    href={customer.website.startsWith('http') ? customer.website : `https://${customer.website}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm font-medium text-gray-900 hover:underline"
-                  >
-                    {customer.website}
-                  </a>
+              <div className="py-4">
+                <div className="flex items-baseline justify-between gap-8">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base font-medium text-foreground mb-1">
+                      Website
+                    </h3>
+                    <a
+                      href={customer.website.startsWith('http') ? customer.website : `https://${customer.website}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary hover:text-primary/80 transition-colors"
+                    >
+                      {customer.website}
+                    </a>
+                  </div>
+                  <Globe className="h-4 w-4 text-muted-foreground" />
                 </div>
-                <Separator />
+              </div>
+            )}
+
+            {/* Show message if no contact info */}
+            {!customer.email && !customer.phone && !customer.address && !customer.website && !customer.primary_contact && (
+              <div className="py-4 text-center">
+                <p className="text-sm text-muted-foreground">No contact information</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Business Details Card */}
+        {(customer.spending_tier || customer.annual_spend || (customer.brands && customer.brands.length > 0)) && (
+          <div className="mb-12">
+            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">
+              Business
+            </h2>
+            <div className="rounded-xl border border-border bg-card p-6 space-y-0">
+              {/* Spending Tier */}
+              {customer.spending_tier && (
+                <>
+                  <div className="py-4">
+                    <div className="flex items-baseline justify-between gap-8">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base font-medium text-foreground mb-1">
+                          Spending Tier
+                        </h3>
+                        <p className="text-sm text-primary font-medium">
+                          {formatSpendingTier(customer.spending_tier)}
+                        </p>
+                      </div>
+                      <Award className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </div>
+                  <div className="h-px bg-border" />
+                </>
+              )}
+
+              {/* Annual Spend */}
+              {customer.annual_spend && (
+                <>
+                  <div className="py-4">
+                    <div className="flex items-baseline justify-between gap-8">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base font-medium text-foreground mb-1">
+                          Annual Spend
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {formatCurrency(customer.annual_spend)}
+                        </p>
+                      </div>
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </div>
+                  {customer.brands && customer.brands.length > 0 && <div className="h-px bg-border" />}
+                </>
+              )}
+
+              {/* Brands */}
+              {customer.brands && customer.brands.length > 0 && (
+                <div className="py-4">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base font-medium text-foreground mb-3">
+                      Brands Carried
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {customer.brands.map((brand) => (
+                        <span
+                          key={brand}
+                          className="px-3 py-1.5 text-sm rounded-full bg-primary/10 text-primary"
+                        >
+                          {brand}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Projects Card */}
+        <div className="mb-12">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+              Projects ({projects.length})
+            </h2>
+            {projects.length > 5 && (
+              <Link
+                href={`/projects?customer=${customerId}`}
+                className="text-sm text-primary hover:text-primary/80 transition-colors"
+              >
+                View All
+              </Link>
+            )}
+          </div>
+          <div className="rounded-xl border border-border bg-card p-6 space-y-0">
+            {projects.length === 0 ? (
+              <div className="py-8 text-center">
+                <p className="text-sm text-muted-foreground mb-4">No projects yet</p>
+                <Link
+                  href="/projects"
+                  className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create a project
+                </Link>
+              </div>
+            ) : (
+              <>
+                {projects.slice(0, 5).map((project, index) => (
+                  <div key={project.id}>
+                    <Link
+                      href={`/projects/${project.id}`}
+                      className="block py-4 transition-opacity hover:opacity-60"
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <FolderOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-base font-medium text-foreground truncate">{project.title}</p>
+                            {project.due_date && (
+                              <p className="text-sm text-muted-foreground">
+                                Due {formatDate(project.due_date)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <span className={`text-xs px-2.5 py-1 rounded-full flex-shrink-0 ${
+                          project.status === 'COMPLETED'
+                            ? 'bg-green-500/10 text-green-600'
+                            : project.status === 'IN_PROGRESS'
+                            ? 'bg-blue-500/10 text-blue-600'
+                            : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {formatStatus(project.status)}
+                        </span>
+                      </div>
+                    </Link>
+                    {index < Math.min(projects.length, 5) - 1 && (
+                      <div className="h-px bg-border" />
+                    )}
+                  </div>
+                ))}
+                {projects.length > 5 && (
+                  <div className="pt-4 text-center border-t border-border mt-4">
+                    <Link
+                      href={`/projects?customer=${customerId}`}
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      +{projects.length - 5} more projects
+                    </Link>
+                  </div>
+                )}
               </>
             )}
-            <div>
-              <p className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Customer Since
-              </p>
-              <p className="text-sm font-medium">{formatDate(customer.created_at)}</p>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+
+        {/* Notes & Communication */}
+        <div>
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">
+            Notes & Communication
+          </h2>
+          <div className="rounded-xl border border-border bg-card p-6">
+            <CommentThread entityType="CUSTOMER" entityId={customer.id} />
+          </div>
+        </div>
+
       </div>
 
-      {/* Brands */}
-      {customer.brands && customer.brands.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Brands Carried</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {customer.brands.map((brand) => (
-                <Badge key={brand} variant="secondary" className="px-3 py-1">
-                  {brand}
-                </Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Communication */}
-      <div>
-        <CommentThread entityType="CUSTOMER" entityId={customer.id} />
-      </div>
-
+      {/* Edit Modal */}
       <CreateCustomerModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}

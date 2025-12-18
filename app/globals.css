@@ -1,41 +1,106 @@
 @import "tailwindcss";
 
-@theme {
-	/* Pink color palette - Luxury aesthetic */
-	--color-primary: #d6b2b8;
-	--color-primary-foreground: #ffffff;
+/* ========================================
+   RPR FLOW - LUXURY DESIGN SYSTEM
+   Pink Palette: #f78dd0 (bright) + #d7b1b8 (soft) + Black/White
+   Elegant, Clean, Sophisticated
+   ======================================== */
 
-	/* Backgrounds */
-	--color-background: hsl(0 0% 98%);
-	--color-foreground: hsl(0 0% 10%);
+/* CSS Custom Properties - Light Mode (default) */
+:root {
+	/* Base */
+	--background: 0 0% 98%;              /* Off-white page background */
+	--foreground: 0 0% 10%;              /* Near black text */
 
 	/* Cards & Surfaces */
-	--color-card: hsl(0 0% 100%);
-	--color-card-foreground: hsl(0 0% 10%);
-	--color-popover: hsl(0 0% 100%);
-	--color-popover-foreground: hsl(0 0% 10%);
+	--card: 0 0% 100%;                   /* Pure white cards */
+	--card-foreground: 0 0% 10%;
+	--popover: 0 0% 100%;
+	--popover-foreground: 0 0% 10%;
 
-	/* Secondary - Light grey for subtle elements */
-	--color-secondary: hsl(0 0% 96%);
-	--color-secondary-foreground: hsl(0 0% 10%);
+	/* Primary: Dusty Rose Pink */
+	--primary: 349 26% 77%;              /* #d6b2b8 - dusty rose */
+	--primary-foreground: 0 0% 100%;     /* White text on pink */
 
-	/* Accent */
-	--color-accent: #d6b2b8;
-	--color-accent-foreground: #ffffff;
+	/* Secondary: Light grey */
+	--secondary: 0 0% 96%;
+	--secondary-foreground: 0 0% 10%;
 
-	/* Muted */
-	--color-muted: hsl(0 0% 96%);
-	--color-muted-foreground: hsl(0 0% 45%);
+	/* Accent: Dusty Rose Pink */
+	--accent: 349 26% 77%;
+	--accent-foreground: 0 0% 100%;
 
-	/* Status */
-	--color-destructive: hsl(0 72% 51%);
-	--color-destructive-foreground: #ffffff;
+	/* Muted: Grey tones */
+	--muted: 0 0% 96%;
+	--muted-foreground: 0 0% 45%;
+
+	/* Status colors */
+	--destructive: 0 72% 51%;
+	--destructive-foreground: 0 0% 100%;
+	--success: 349 26% 77%;              /* Use pink for success */
+	--success-foreground: 0 0% 100%;
+	--warning: 45 93% 47%;
+	--warning-foreground: 0 0% 10%;
 
 	/* Borders & Inputs */
-	--color-border: hsl(0 0% 90%);
-	--color-input: hsl(0 0% 90%);
-	--color-ring: #f78dd0;
+	--border: 0 0% 90%;
+	--input: 0 0% 90%;
+	--ring: 349 26% 77%;                 /* Pink focus ring */
 
+	/* Border radius */
+	--radius: 0.75rem;
+
+	/* Shadows */
+	--shadow-color: 0 0% 0%;
+}
+
+/* CSS Custom Properties - Dark Mode */
+.dark {
+	/* Base - Deep charcoal with warm undertone */
+	--background: 240 5% 6%;
+	--foreground: 0 0% 95%;
+
+	/* Cards & Surfaces - Slightly elevated from background */
+	--card: 240 4% 10%;
+	--card-foreground: 0 0% 95%;
+	--popover: 240 4% 12%;
+	--popover-foreground: 0 0% 95%;
+
+	/* Primary: Dusty Rose Pink (brighter for dark mode visibility) */
+	--primary: 349 35% 72%;
+	--primary-foreground: 240 5% 6%;
+
+	/* Secondary - Subtle elevation */
+	--secondary: 240 4% 16%;
+	--secondary-foreground: 0 0% 90%;
+
+	/* Accent - Same as primary for consistency */
+	--accent: 349 35% 72%;
+	--accent-foreground: 240 5% 6%;
+
+	/* Muted - For subtle backgrounds and text */
+	--muted: 240 4% 14%;
+	--muted-foreground: 0 0% 60%;
+
+	/* Status colors - Adjusted for dark mode */
+	--destructive: 0 72% 55%;
+	--destructive-foreground: 0 0% 100%;
+	--success: 142 50% 45%;
+	--success-foreground: 0 0% 100%;
+	--warning: 45 93% 55%;
+	--warning-foreground: 0 0% 10%;
+
+	/* Borders & Inputs - Subtle but visible */
+	--border: 240 4% 18%;
+	--input: 240 4% 18%;
+	--ring: 349 35% 72%;
+
+	/* Shadows - Darker for depth */
+	--shadow-color: 0 0% 0%;
+}
+
+/* Tailwind v4 Theme - Static values only */
+@theme inline {
 	/* Border radius */
 	--radius-sm: 0.5rem;
 	--radius: 0.75rem;
@@ -45,107 +110,68 @@
 	--radius-2xl: 1.5rem;
 }
 
-/* ========================================
-   RPR FLOW - LUXURY DESIGN SYSTEM
-   Pink Palette: #f78dd0 (bright) + #d7b1b8 (soft) + Black/White
-   Elegant, Clean, Sophisticated
-   ======================================== */
+/* Override Tailwind color utilities to use CSS variables */
+@layer utilities {
+	/* Background colors */
+	.bg-background { background-color: hsl(var(--background)) !important; }
+	.bg-foreground { background-color: hsl(var(--foreground)) !important; }
+	.bg-card { background-color: hsl(var(--card)) !important; }
+	.bg-popover { background-color: hsl(var(--popover)) !important; }
+	.bg-primary { background-color: hsl(var(--primary)) !important; }
+	.bg-secondary { background-color: hsl(var(--secondary)) !important; }
+	.bg-accent { background-color: hsl(var(--accent)) !important; }
+	.bg-muted { background-color: hsl(var(--muted)) !important; }
+	.bg-destructive { background-color: hsl(var(--destructive)) !important; }
 
-@layer base {
-	:root {
-		/* ===== RPR FLOW - Light Mode ===== */
+	/* Background with opacity */
+	.bg-primary\/5 { background-color: hsl(var(--primary) / 0.05) !important; }
+	.bg-primary\/10 { background-color: hsl(var(--primary) / 0.1) !important; }
+	.bg-primary\/20 { background-color: hsl(var(--primary) / 0.2) !important; }
+	.bg-muted\/30 { background-color: hsl(var(--muted) / 0.3) !important; }
+	.bg-muted\/50 { background-color: hsl(var(--muted) / 0.5) !important; }
 
-		/* Base */
-		--background: 0 0% 98%;              /* Off-white page background */
-		--foreground: 0 0% 10%;              /* Near black text */
+	/* Text colors */
+	.text-foreground { color: hsl(var(--foreground)) !important; }
+	.text-background { color: hsl(var(--background)) !important; }
+	.text-card-foreground { color: hsl(var(--card-foreground)) !important; }
+	.text-popover-foreground { color: hsl(var(--popover-foreground)) !important; }
+	.text-primary { color: hsl(var(--primary)) !important; }
+	.text-primary-foreground { color: hsl(var(--primary-foreground)) !important; }
+	.text-secondary-foreground { color: hsl(var(--secondary-foreground)) !important; }
+	.text-accent-foreground { color: hsl(var(--accent-foreground)) !important; }
+	.text-muted-foreground { color: hsl(var(--muted-foreground)) !important; }
+	.text-destructive { color: hsl(var(--destructive)) !important; }
+	.text-destructive-foreground { color: hsl(var(--destructive-foreground)) !important; }
 
-		/* Cards & Surfaces */
-		--card: 0 0% 100%;                   /* Pure white cards */
-		--card-foreground: 0 0% 10%;
-		--popover: 0 0% 100%;
-		--popover-foreground: 0 0% 10%;
+	/* Text with opacity */
+	.text-foreground\/80 { color: hsl(var(--foreground) / 0.8) !important; }
+	.text-muted-foreground\/40 { color: hsl(var(--muted-foreground) / 0.4) !important; }
 
-		/* Primary: Dusty Rose Pink */
-		--primary: 349 26% 77%;              /* #d6b2b8 - dusty rose */
-		--primary-foreground: 0 0% 100%;     /* White text on pink */
+	/* Border colors */
+	.border-border { border-color: hsl(var(--border)) !important; }
+	.border-input { border-color: hsl(var(--input)) !important; }
+	.border-primary { border-color: hsl(var(--primary)) !important; }
+	.border-destructive { border-color: hsl(var(--destructive)) !important; }
 
-		/* Secondary: Light grey */
-		--secondary: 0 0% 96%;
-		--secondary-foreground: 0 0% 10%;
+	/* Ring colors */
+	.ring-ring { --tw-ring-color: hsl(var(--ring)) !important; }
+	.ring-primary { --tw-ring-color: hsl(var(--primary)) !important; }
 
-		/* Accent: Dusty Rose Pink */
-		--accent: 349 26% 77%;
-		--accent-foreground: 0 0% 100%;
+	/* Hover states */
+	.hover\:bg-muted:hover { background-color: hsl(var(--muted)) !important; }
+	.hover\:bg-accent:hover { background-color: hsl(var(--accent)) !important; }
+	.hover\:bg-primary:hover { background-color: hsl(var(--primary)) !important; }
+	.hover\:bg-destructive:hover { background-color: hsl(var(--destructive)) !important; }
+	.hover\:bg-muted\/30:hover { background-color: hsl(var(--muted) / 0.3) !important; }
+	.hover\:text-foreground:hover { color: hsl(var(--foreground)) !important; }
+	.hover\:text-primary:hover { color: hsl(var(--primary)) !important; }
+	.hover\:text-accent-foreground:hover { color: hsl(var(--accent-foreground)) !important; }
+	.hover\:text-primary\/80:hover { color: hsl(var(--primary) / 0.8) !important; }
+	.hover\:border-primary:hover { border-color: hsl(var(--primary)) !important; }
 
-		/* Muted: Grey tones */
-		--muted: 0 0% 96%;
-		--muted-foreground: 0 0% 45%;
-
-		/* Status colors */
-		--destructive: 0 72% 51%;
-		--destructive-foreground: 0 0% 100%;
-		--success: 349 26% 77%;              /* Use pink for success */
-		--success-foreground: 0 0% 100%;
-		--warning: 45 93% 47%;
-		--warning-foreground: 0 0% 10%;
-
-		/* Borders & Inputs */
-		--border: 0 0% 90%;
-		--input: 0 0% 90%;
-		--ring: 349 26% 77%;                 /* Pink focus ring */
-
-		/* Border radius */
-		--radius: 0.75rem;
-
-		/* Shadows */
-		--shadow-color: 0 0% 0%;
-	}
-
-	.dark {
-		/* ===== RPR FLOW - Dark Mode ===== */
-
-		/* Base */
-		--background: 0 0% 8%;
-		--foreground: 0 0% 90%;
-
-		/* Cards & Surfaces */
-		--card: 0 0% 12%;
-		--card-foreground: 0 0% 90%;
-		--popover: 0 0% 12%;
-		--popover-foreground: 0 0% 90%;
-
-		/* Primary: Dusty Rose Pink (lighter for dark mode) */
-		--primary: 349 26% 80%;
-		--primary-foreground: 0 0% 8%;
-
-		/* Secondary */
-		--secondary: 0 0% 18%;
-		--secondary-foreground: 0 0% 90%;
-
-		/* Accent */
-		--accent: 349 26% 80%;
-		--accent-foreground: 0 0% 8%;
-
-		/* Muted */
-		--muted: 0 0% 15%;
-		--muted-foreground: 0 0% 55%;
-
-		/* Status colors */
-		--destructive: 0 62% 50%;
-		--destructive-foreground: 0 0% 100%;
-		--success: 349 26% 80%;
-		--success-foreground: 0 0% 8%;
-		--warning: 45 88% 52%;
-		--warning-foreground: 0 0% 8%;
-
-		/* Borders & Inputs */
-		--border: 0 0% 20%;
-		--input: 0 0% 20%;
-		--ring: 349 26% 80%;
-
-		/* Shadows */
-		--shadow-color: 0 0% 0%;
-	}
+	/* Focus states */
+	.focus\:border-primary:focus { border-color: hsl(var(--primary)) !important; }
+	.focus\:ring-ring:focus { --tw-ring-color: hsl(var(--ring)) !important; }
 }
 
 @layer base {
@@ -161,6 +187,7 @@
 		text-rendering: optimizeLegibility;
 		-webkit-font-smoothing: antialiased;
 		-moz-osx-font-smoothing: grayscale;
+		transition: background-color 0.3s ease, color 0.3s ease;
 	}
 
 	html {
@@ -192,6 +219,17 @@
 			width: 0;
 			height: 0;
 		}
+	}
+
+	/* Date input calendar icon - invert in dark mode */
+	.dark input[type="date"]::-webkit-calendar-picker-indicator {
+		filter: invert(1);
+	}
+
+	/* Select dropdown styling for dark mode */
+	select option {
+		background-color: hsl(var(--card));
+		color: hsl(var(--foreground));
 	}
 }
 
