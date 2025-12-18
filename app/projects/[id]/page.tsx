@@ -329,7 +329,7 @@ export default function ProjectDetailPage() {
                   <div className="flex items-baseline justify-between gap-8">
                     <div className="flex-1 min-w-0">
                       <h3 className="text-base font-medium text-foreground mb-3">
-                        Categories
+                        Category
                       </h3>
                       <div className="flex flex-wrap gap-3">
                         {categories.map((category) => (
