@@ -32,10 +32,6 @@ export async function GET() {
       ...activities.filter(a => a.project_id).map(a => a.project_id),
       ...comments.filter(c => c.entity_type === 'PROJECT').map(c => c.entity_id)
     ]
-    const campaignIds = [
-      ...activities.filter(a => a.campaign_id).map(a => a.campaign_id),
-      ...comments.filter(c => c.entity_type === 'CAMPAIGN').map(c => c.entity_id)
-    ]
     const customerIds = [
       ...comments.filter(c => c.entity_type === 'CUSTOMER').map(c => c.entity_id)
     ]
@@ -46,12 +42,9 @@ export async function GET() {
     )]
 
     // Fetch entity details and users
-    const [projectsData, campaignsData, customersData, usersData] = await Promise.all([
+    const [projectsData, customersData, usersData] = await Promise.all([
       projectIds.length > 0
         ? supabase.from('projects').select('id, title, status').in('id', [...new Set(projectIds)])
-        : { data: [] },
-      campaignIds.length > 0
-        ? supabase.from('campaigns').select('id, name, status').in('id', [...new Set(campaignIds)])
         : { data: [] },
       customerIds.length > 0
         ? supabase.from('customers').select('id, name').in('id', [...new Set(customerIds)])
@@ -63,12 +56,10 @@ export async function GET() {
 
     // Create lookup maps
     const projectMap: Record<string, any> = {}
-    const campaignMap: Record<string, any> = {}
     const customerMap: Record<string, any> = {}
     const userMap: Record<string, any> = {}
 
     projectsData.data?.forEach(p => { projectMap[p.id] = p })
-    campaignsData.data?.forEach(c => { campaignMap[c.id] = c })
     customersData.data?.forEach(c => { customerMap[c.id] = c })
     usersData.data?.forEach(u => { userMap[u.id] = u })
 
@@ -85,12 +76,6 @@ export async function GET() {
         entityName = project?.title || activity.description
         entityId = activity.project_id
         linkHref = `/projects/${activity.project_id}`
-      } else if (activity.campaign_id) {
-        const campaign = campaignMap[activity.campaign_id]
-        entityType = 'Campaign'
-        entityName = campaign?.name || activity.description
-        entityId = activity.campaign_id
-        linkHref = `/campaigns/${activity.campaign_id}`
       } else if (activity.customer_id) {
         const customer = customerMap[activity.customer_id]
         entityType = 'Customer'
@@ -140,11 +125,6 @@ export async function GET() {
         entityType = 'Project Comment'
         entityName = project?.title || 'Project'
         linkHref = `/projects/${comment.entity_id}`
-      } else if (comment.entity_type === 'CAMPAIGN') {
-        const campaign = campaignMap[comment.entity_id]
-        entityType = 'Campaign Comment'
-        entityName = campaign?.name || 'Campaign'
-        linkHref = `/campaigns/${comment.entity_id}`
       } else if (comment.entity_type === 'CUSTOMER') {
         const customer = customerMap[comment.entity_id]
         entityType = 'Customer Comment'

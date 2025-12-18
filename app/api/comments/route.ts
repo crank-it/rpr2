@@ -158,8 +158,6 @@ export async function POST(request: Request) {
       activityData.project_id = entityId
     } else if (entityType === 'CUSTOMER') {
       activityData.customer_id = entityId
-    } else if (entityType === 'CAMPAIGN') {
-      activityData.campaign_id = entityId
     }
 
     await supabase.from('activities').insert(activityData)
@@ -289,8 +287,6 @@ export async function DELETE(request: Request) {
         activityData.project_id = comment.entity_id
       } else if (comment.entity_type === 'CUSTOMER') {
         activityData.customer_id = comment.entity_id
-      } else if (comment.entity_type === 'CAMPAIGN') {
-        activityData.campaign_id = comment.entity_id
       }
 
       await supabase.from('activities').insert(activityData)

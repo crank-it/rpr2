@@ -32,10 +32,8 @@ export async function GET(request: Request) {
       type: activity.type,
       description: activity.description,
       entityType: activity.type?.includes('project') ? 'Project' :
-                  activity.type?.includes('campaign') ? 'Campaign' :
-                  activity.type?.includes('customer') ? 'Customer' :
-                  activity.type?.includes('asset') ? 'Asset' : 'Activity',
-      entityId: activity.project_id || activity.campaign_id || activity.customer_id || null,
+                  activity.type?.includes('customer') ? 'Customer' : 'Activity',
+      entityId: activity.project_id || activity.customer_id || null,
       performedBy: activity.performed_by,
       createdAt: activity.created_at
     }))

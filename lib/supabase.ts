@@ -45,43 +45,10 @@ export interface Project {
   completed_at: string | null
 }
 
-export interface Campaign {
-  id: string
-  name: string
-  description: string | null
-  status: 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | 'COMPLETED' | 'PAUSED'
-  audience: 'B2B' | 'B2C' | 'BOTH'
-  launch_date: string | null
-  end_date: string | null
-  budget: number | null
-  progress: number
-  created_at: string
-  updated_at: string
-}
-
-export interface Asset {
-  id: string
-  name: string
-  type: 'IMAGE' | 'VIDEO' | 'DOCUMENT' | 'PDF' | 'DESIGN'
-  url: string
-  thumbnail_url: string | null
-  description: string | null
-  tags: string[]
-  file_size: number | null
-  width: number | null
-  height: number | null
-  duration: number | null
-  uploaded_by: string
-  downloads: number
-  views: number
-  created_at: string
-  updated_at: string
-}
-
 export interface Comment {
   id: string
   content: string
-  entity_type: 'CUSTOMER' | 'PROJECT' | 'CAMPAIGN' | 'ASSET' | 'TASK'
+  entity_type: 'CUSTOMER' | 'PROJECT' | 'TASK'
   entity_id: string
   author_id: string | null
   author_name: string
