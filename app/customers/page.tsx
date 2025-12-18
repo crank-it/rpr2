@@ -1,10 +1,11 @@
 'use client'
 
-import { Plus, Search } from 'lucide-react'
+import { Plus, Search, Trash2 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { CreateCustomerModal } from '@/components/customers/CreateCustomerModal'
+import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal'
 
 interface Customer {
   id: string
@@ -28,6 +29,7 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null)
 
   const fetchCustomers = async () => {
     setLoading(true)
@@ -83,6 +85,21 @@ export default function CustomersPage() {
   // Get first letter for avatar
   const getInitials = (name: string) => {
     return name.charAt(0).toUpperCase()
+  }
+
+  const handleDeleteCustomer = async () => {
+    if (!customerToDelete) return
+
+    const response = await fetch(`/api/customers/${customerToDelete.id}`, {
+      method: 'DELETE'
+    })
+
+    if (!response.ok) {
+      const data = await response.json()
+      throw new Error(data.error || 'Failed to delete customer')
+    }
+
+    fetchCustomers()
   }
 
   return (
@@ -154,30 +171,39 @@ export default function CustomersPage() {
 
                   {/* Customers in this group */}
                   {grouped[letter].map((customer, index) => (
-                    <div key={customer.id}>
-                      <Link
-                        href={`/customers/${customer.id}`}
-                        className="block py-6 transition-opacity hover:opacity-60"
-                      >
-                        <div className="flex items-baseline justify-between gap-8">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-base font-medium text-foreground mb-1">
-                              {customer.name}
-                            </h3>
-                            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                              {customer.type && (
-                                <>
-                                  <span>{formatCustomerType(customer.type)}</span>
-                                  {customer.email && <span>·</span>}
-                                </>
-                              )}
-                              {customer.email && (
-                                <span>{customer.email}</span>
-                              )}
+                    <div key={customer.id} className="group">
+                      <div className="flex items-center">
+                        <Link
+                          href={`/customers/${customer.id}`}
+                          className="flex-1 py-6 transition-opacity hover:opacity-60"
+                        >
+                          <div className="flex items-baseline justify-between gap-8">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-base font-medium text-foreground mb-1">
+                                {customer.name}
+                              </h3>
+                              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                                {customer.type && (
+                                  <>
+                                    <span>{formatCustomerType(customer.type)}</span>
+                                    {customer.email && <span>·</span>}
+                                  </>
+                                )}
+                                {customer.email && (
+                                  <span>{customer.email}</span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </Link>
+                        </Link>
+                        <button
+                          onClick={() => setCustomerToDelete(customer)}
+                          className="p-3 mr-2 text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                          title="Delete customer"
+                        >
+                          <Trash2 className="h-4 w-4 hover:text-[lab(55.4814%_75.0732_48.8528)]" />
+                        </button>
+                      </div>
                       {index < grouped[letter].length - 1 && (
                         <div className="h-px bg-border" />
                       )}
@@ -203,6 +229,19 @@ export default function CustomersPage() {
           onClose={() => setIsCreateModalOpen(false)}
           onCustomerCreated={handleCustomerCreated}
         />
+
+        {/* Delete Customer Modal */}
+        {customerToDelete && (
+          <DeleteConfirmModal
+            isOpen={!!customerToDelete}
+            onClose={() => setCustomerToDelete(null)}
+            onConfirm={handleDeleteCustomer}
+            title="Delete Customer"
+            itemName={customerToDelete.name}
+            warningMessage="This action cannot be undone."
+            cascadeMessage="Projects linked to this customer will have their customer reference removed."
+          />
+        )}
       </div>
     </div>
   )

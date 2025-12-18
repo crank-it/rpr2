@@ -1,8 +1,9 @@
 'use client'
 
-import { Plus, Search } from 'lucide-react'
+import { Plus, Search, Trash2 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { CreateProjectModal } from '@/components/projects/CreateProjectModal'
+import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal'
 import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
 
@@ -40,6 +41,7 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
 
   const fetchData = async () => {
     setLoading(true)
@@ -111,6 +113,21 @@ export default function ProjectsPage() {
     return status.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())
   }
 
+  const handleDeleteProject = async () => {
+    if (!projectToDelete) return
+
+    const response = await fetch(`/api/projects/${projectToDelete.id}`, {
+      method: 'DELETE'
+    })
+
+    if (!response.ok) {
+      const data = await response.json()
+      throw new Error(data.error || 'Failed to delete project')
+    }
+
+    fetchData()
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Centered container with max width */}
@@ -165,36 +182,45 @@ export default function ProjectsPage() {
               const assigneeNames = getAssigneeNames(project)
 
               return (
-                <div key={project.id}>
-                  <Link
-                    href={`/projects/${project.id}`}
-                    className="block py-8 transition-opacity hover:opacity-60"
-                  >
-                    <div className="flex items-baseline justify-between gap-8">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-base font-medium text-foreground mb-1">
-                          {project.title}
-                        </h3>
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                          <span>{assigneeNames || 'Unassigned'}</span>
-                          <span>·</span>
-                          <span>{formatStatus(project.status)}</span>
-                          {customerName && (
-                            <>
-                              <span>·</span>
-                              <span>{customerName}</span>
-                            </>
-                          )}
-                          {project.dueDate && (
-                            <>
-                              <span>·</span>
-                              <span>{formatDate(project.dueDate)}</span>
-                            </>
-                          )}
+                <div key={project.id} className="group">
+                  <div className="flex items-center">
+                    <Link
+                      href={`/projects/${project.id}`}
+                      className="flex-1 py-8 transition-opacity hover:opacity-60"
+                    >
+                      <div className="flex items-baseline justify-between gap-8">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-base font-medium text-foreground mb-1">
+                            {project.title}
+                          </h3>
+                          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                            <span>{assigneeNames || 'Unassigned'}</span>
+                            <span>·</span>
+                            <span>{formatStatus(project.status)}</span>
+                            {customerName && (
+                              <>
+                                <span>·</span>
+                                <span>{customerName}</span>
+                              </>
+                            )}
+                            {project.dueDate && (
+                              <>
+                                <span>·</span>
+                                <span>{formatDate(project.dueDate)}</span>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </Link>
+                    </Link>
+                    <button
+                      onClick={() => setProjectToDelete(project)}
+                      className="p-3 mr-2 text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                      title="Delete project"
+                    >
+                      <Trash2 className="h-4 w-4 hover:text-[lab(55.4814%_75.0732_48.8528)]" />
+                    </button>
+                  </div>
                   {index < filteredProjects.length - 1 && (
                     <div className="h-px bg-border" />
                   )}
@@ -219,6 +245,19 @@ export default function ProjectsPage() {
         onProjectCreated={handleProjectCreated}
         customers={customers}
       />
+
+      {/* Delete Project Modal */}
+      {projectToDelete && (
+        <DeleteConfirmModal
+          isOpen={!!projectToDelete}
+          onClose={() => setProjectToDelete(null)}
+          onConfirm={handleDeleteProject}
+          title="Delete Project"
+          itemName={projectToDelete.title}
+          warningMessage="This action cannot be undone."
+          cascadeMessage="All tasks linked to this project will also be deleted."
+        />
+      )}
     </div>
   )
 }

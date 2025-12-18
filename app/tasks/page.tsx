@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, Plus } from 'lucide-react'
+import { Search, Plus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { formatDate } from '@/lib/utils'
+import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal'
 
 interface Task {
   id: string
@@ -38,6 +39,7 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [taskToDelete, setTaskToDelete] = useState<Task | null>(null)
 
   const fetchData = async () => {
     setLoading(true)
@@ -101,6 +103,21 @@ export default function TasksPage() {
     return statusOrder.indexOf(a) - statusOrder.indexOf(b)
   })
 
+  const handleDeleteTask = async () => {
+    if (!taskToDelete) return
+
+    const response = await fetch(`/api/tasks/${taskToDelete.id}`, {
+      method: 'DELETE'
+    })
+
+    if (!response.ok) {
+      const data = await response.json()
+      throw new Error(data.error || 'Failed to delete task')
+    }
+
+    fetchData()
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-3xl px-6 py-16">
@@ -128,7 +145,7 @@ export default function TasksPage() {
         </div>
 
         {/* Status Filter */}
-        <div className="flex items-center gap-3 mb-12 justify-center">
+        <div className="flex items-center gap-3 mb-12 justify-center flex-wrap">
           <button
             onClick={() => setStatusFilter('all')}
             className={`text-sm transition-colors ${
@@ -138,6 +155,28 @@ export default function TasksPage() {
             }`}
           >
             All
+          </button>
+          <span className="text-muted-foreground">·</span>
+          <button
+            onClick={() => setStatusFilter('DRAFT')}
+            className={`text-sm transition-colors ${
+              statusFilter === 'DRAFT'
+                ? 'text-foreground font-medium'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Draft
+          </button>
+          <span className="text-muted-foreground">·</span>
+          <button
+            onClick={() => setStatusFilter('START')}
+            className={`text-sm transition-colors ${
+              statusFilter === 'START'
+                ? 'text-foreground font-medium'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Start
           </button>
           <span className="text-muted-foreground">·</span>
           <button
@@ -160,6 +199,17 @@ export default function TasksPage() {
             }`}
           >
             Review
+          </button>
+          <span className="text-muted-foreground">·</span>
+          <button
+            onClick={() => setStatusFilter('APPROVED')}
+            className={`text-sm transition-colors ${
+              statusFilter === 'APPROVED'
+                ? 'text-foreground font-medium'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Approved
           </button>
           <span className="text-muted-foreground">·</span>
           <button
@@ -200,34 +250,43 @@ export default function TasksPage() {
                 {/* Tasks in this status */}
                 <div className="space-y-0">
                   {groupedTasks[status].map((task, index) => (
-                    <div key={task.id}>
-                      <Link
-                        href={`/projects/${task.projectId}`}
-                        className="block py-6 transition-opacity hover:opacity-60"
-                      >
-                        <div className="flex items-baseline justify-between gap-8">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-base font-medium text-foreground mb-1">
-                              {task.title}
-                            </h3>
-                            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                              {task.project && (
-                                <>
-                                  <span>{task.project.title}</span>
-                                  <span>·</span>
-                                </>
-                              )}
-                              {task.targetDate && (
-                                <>
-                                  <span>Due {formatDate(task.targetDate)}</span>
-                                  <span>·</span>
-                                </>
-                              )}
-                              <span>{getAssigneeNames(task.assigneeIds)}</span>
+                    <div key={task.id} className="group">
+                      <div className="flex items-center">
+                        <Link
+                          href={`/projects/${task.projectId}`}
+                          className="flex-1 py-6 transition-opacity hover:opacity-60"
+                        >
+                          <div className="flex items-baseline justify-between gap-8">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-base font-medium text-foreground mb-1">
+                                {task.title}
+                              </h3>
+                              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                                {task.project && (
+                                  <>
+                                    <span>{task.project.title}</span>
+                                    <span>·</span>
+                                  </>
+                                )}
+                                {task.targetDate && (
+                                  <>
+                                    <span>Due {formatDate(task.targetDate)}</span>
+                                    <span>·</span>
+                                  </>
+                                )}
+                                <span>{getAssigneeNames(task.assigneeIds)}</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </Link>
+                        </Link>
+                        <button
+                          onClick={() => setTaskToDelete(task)}
+                          className="p-3 mr-2 text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                          title="Delete task"
+                        >
+                          <Trash2 className="h-4 w-4 hover:text-[lab(55.4814%_75.0732_48.8528)]" />
+                        </button>
+                      </div>
                       {index < groupedTasks[status].length - 1 && (
                         <div className="h-px bg-border" />
                       )}
@@ -237,6 +296,18 @@ export default function TasksPage() {
               </div>
             ))}
           </div>
+        )}
+
+        {/* Delete Task Modal */}
+        {taskToDelete && (
+          <DeleteConfirmModal
+            isOpen={!!taskToDelete}
+            onClose={() => setTaskToDelete(null)}
+            onConfirm={handleDeleteTask}
+            title="Delete Task"
+            itemName={taskToDelete.title}
+            warningMessage="This action cannot be undone."
+          />
         )}
       </div>
     </div>

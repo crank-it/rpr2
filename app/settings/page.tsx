@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Sun, Moon } from 'lucide-react'
+import { Plus, Sun, Moon, Trash2 } from 'lucide-react'
 import { FieldBuilderModal } from '@/components/settings/FieldBuilderModal'
+import { AddCategoryModal } from '@/components/settings/AddCategoryModal'
+import { DeleteCategoryModal } from '@/components/settings/DeleteCategoryModal'
 import { useTheme } from '@/components/ThemeProvider'
 
 interface Category {
@@ -20,6 +22,8 @@ export default function SettingsPage() {
   const [loadingCategories, setLoadingCategories] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
   const [isFieldBuilderOpen, setIsFieldBuilderOpen] = useState(false)
+  const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false)
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null)
   const { theme, setTheme } = useTheme()
 
   useEffect(() => {
@@ -52,6 +56,21 @@ export default function SettingsPage() {
     fetchCategories() // Refresh to get updated fields
   }
 
+  const handleDeleteCategory = async () => {
+    if (!categoryToDelete) return
+
+    const response = await fetch(`/api/project-categories/${categoryToDelete.id}`, {
+      method: 'DELETE'
+    })
+
+    if (!response.ok) {
+      const data = await response.json()
+      throw new Error(data.error || 'Failed to delete category')
+    }
+
+    fetchCategories()
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-3xl px-6 py-16">
@@ -81,7 +100,10 @@ export default function SettingsPage() {
               <p className="text-muted-foreground mb-8">
                 No categories yet
               </p>
-              <button className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors">
+              <button
+                onClick={() => setIsAddCategoryOpen(true)}
+                className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors"
+              >
                 <Plus className="h-4 w-4" />
                 Create your first category
               </button>
@@ -89,36 +111,45 @@ export default function SettingsPage() {
           ) : (
             <div className="space-y-0">
               {categories.map((category, index) => (
-                <div key={category.id}>
-                  <button
-                    onClick={() => openFieldBuilder(category)}
-                    className="w-full py-6 text-left hover:bg-muted/30 transition-colors"
-                  >
-                    <div className="flex items-baseline justify-between gap-8">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-1">
-                          <div
-                            className="h-3 w-3 rounded-full"
-                            style={{ backgroundColor: category.color }}
-                          />
-                          <h3 className="text-base font-medium text-foreground">
-                            {category.name}
-                          </h3>
-                        </div>
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                          {category.description && (
-                            <>
-                              <span>{category.description}</span>
-                              <span>·</span>
-                            </>
-                          )}
-                          <span>
-                            {category.projectCount || 0} {category.projectCount === 1 ? 'project' : 'projects'}
-                          </span>
+                <div key={category.id} className="group">
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => openFieldBuilder(category)}
+                      className="flex-1 py-6 text-left hover:bg-muted/30 transition-colors"
+                    >
+                      <div className="flex items-baseline justify-between gap-8">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 mb-1">
+                            <div
+                              className="h-3 w-3 rounded-full"
+                              style={{ backgroundColor: category.color }}
+                            />
+                            <h3 className="text-base font-medium text-foreground">
+                              {category.name}
+                            </h3>
+                          </div>
+                          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                            {category.description && (
+                              <>
+                                <span>{category.description}</span>
+                                <span>·</span>
+                              </>
+                            )}
+                            <span>
+                              {category.projectCount || 0} {category.projectCount === 1 ? 'project' : 'projects'}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </button>
+                    </button>
+                    <button
+                      onClick={() => setCategoryToDelete(category)}
+                      className="p-3 mr-2 text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                      title="Delete category"
+                    >
+                      <Trash2 className="h-4 w-4 hover:text-[lab(55.4814%_75.0732_48.8528)]" />
+                    </button>
+                  </div>
                   {index < categories.length - 1 && (
                     <div className="h-px bg-border" />
                   )}
@@ -187,7 +218,10 @@ export default function SettingsPage() {
         </div>
 
         {/* Floating action button */}
-        <button className="fixed bottom-8 right-8 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-soft-lg hover:shadow-soft-xl transition-all hover:scale-105">
+        <button
+          onClick={() => setIsAddCategoryOpen(true)}
+          className="fixed bottom-8 right-8 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-soft-lg hover:shadow-soft-xl transition-all hover:scale-105"
+        >
           <Plus className="h-6 w-6" />
         </button>
 
@@ -198,6 +232,24 @@ export default function SettingsPage() {
             onClose={closeFieldBuilder}
             categoryId={selectedCategory.id}
             categoryName={selectedCategory.name}
+          />
+        )}
+
+        {/* Add Category Modal */}
+        <AddCategoryModal
+          isOpen={isAddCategoryOpen}
+          onClose={() => setIsAddCategoryOpen(false)}
+          onSuccess={fetchCategories}
+        />
+
+        {/* Delete Category Modal */}
+        {categoryToDelete && (
+          <DeleteCategoryModal
+            isOpen={!!categoryToDelete}
+            onClose={() => setCategoryToDelete(null)}
+            onConfirm={handleDeleteCategory}
+            categoryName={categoryToDelete.name}
+            projectCount={categoryToDelete.projectCount || 0}
           />
         )}
       </div>
