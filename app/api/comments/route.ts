@@ -117,7 +117,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { entityType, entityId, content, author, authorEmail, parentId } = body
     const currentUserData = await getCurrentUser()
-    const performedBy = currentUserData?.name || 'User'
+    const performedBy = currentUserData?.id || null
 
     if (!entityType || !entityId || !content) {
       return NextResponse.json(
@@ -132,7 +132,7 @@ export async function POST(request: Request) {
         entity_type: entityType,
         entity_id: entityId,
         content,
-        author: author || performedBy,
+        author: author || currentUserData?.name || 'User',
         author_id: currentUserData?.id || null,
         author_email: authorEmail || null,
         parent_id: parentId || null
@@ -284,7 +284,7 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url)
     const commentId = searchParams.get('commentId')
     const currentUserData = await getCurrentUser()
-    const performedBy = currentUserData?.name || 'User'
+    const performedBy = currentUserData?.id || null
 
     if (!currentUserData) {
       return NextResponse.json(

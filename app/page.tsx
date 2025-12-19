@@ -1,7 +1,7 @@
 'use client'
 
-import { MessageCircle, ExternalLink, Send } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { MessageCircle, ExternalLink, Send, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 
 interface ActivityItem {
@@ -32,8 +32,21 @@ interface Reply {
   timestamp: string
 }
 
+interface Pagination {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+}
+
+interface User {
+  id: string
+  name: string
+  email: string
+}
+
 export default function ActivityFeedPage() {
-  const [data, setData] = useState<{ recentActivity: ActivityItem[] } | null>(null)
+  const [data, setData] = useState<{ recentActivity: ActivityItem[], pagination: Pagination } | null>(null)
   const [loading, setLoading] = useState(true)
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set())
   const [replies, setReplies] = useState<Record<string, Reply[]>>({})
@@ -42,10 +55,14 @@ export default function ActivityFeedPage() {
   const [submittingReply, setSubmittingReply] = useState<string | null>(null)
   const [currentUserName, setCurrentUserName] = useState<string>('User')
 
-  useEffect(() => {
-    fetchActivityData()
-    fetchCurrentUser()
-  }, [])
+  // Pagination state
+  const [page, setPage] = useState(1)
+
+  // Filter state
+  const [activityType, setActivityType] = useState<'all' | 'project' | 'customer' | 'task' | 'comment'>('all')
+  const [dateRange, setDateRange] = useState<'all' | 'today' | 'week' | 'month'>('all')
+  const [userId, setUserId] = useState<string>('all')
+  const [users, setUsers] = useState<User[]>([])
 
   const fetchCurrentUser = async () => {
     try {
@@ -59,9 +76,28 @@ export default function ActivityFeedPage() {
     }
   }
 
-  const fetchActivityData = async () => {
+  const fetchUsers = async () => {
     try {
-      const response = await fetch('/api/dashboard/stats')
+      const response = await fetch('/api/users/active')
+      if (response.ok) {
+        const usersData = await response.json()
+        setUsers(usersData)
+      }
+    } catch (error) {
+      console.error('Failed to fetch users:', error)
+    }
+  }
+
+  const fetchActivityData = useCallback(async () => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        activityType,
+        dateRange,
+        userId
+      })
+      const response = await fetch(`/api/dashboard/stats?${params}`)
       if (response.ok) {
         const result = await response.json()
         setData(result)
@@ -71,6 +107,31 @@ export default function ActivityFeedPage() {
     } finally {
       setLoading(false)
     }
+  }, [page, activityType, dateRange, userId])
+
+  useEffect(() => {
+    fetchUsers()
+    fetchCurrentUser()
+  }, [])
+
+  useEffect(() => {
+    fetchActivityData()
+  }, [fetchActivityData])
+
+  // Handler for filter changes that resets to page 1
+  const handleActivityTypeChange = (value: 'all' | 'project' | 'customer' | 'task' | 'comment') => {
+    setActivityType(value)
+    setPage(1)
+  }
+
+  const handleDateRangeChange = (value: 'all' | 'today' | 'week' | 'month') => {
+    setDateRange(value)
+    setPage(1)
+  }
+
+  const handleUserIdChange = (value: string) => {
+    setUserId(value)
+    setPage(1)
   }
 
   const fetchReplies = async (commentId: string, entityType: string, entityId: string) => {
@@ -80,6 +141,7 @@ export default function ActivityFeedPage() {
       const response = await fetch(`/api/comments?entityType=${entityType}&entityId=${entityId}`)
       if (response.ok) {
         const comments = await response.json()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const comment = comments.find((c: any) => c.id === commentId)
         if (comment && comment.replies) {
           setReplies(prev => ({
@@ -206,13 +268,52 @@ export default function ActivityFeedPage() {
       <div className="mx-auto max-w-3xl px-6 py-16">
 
         {/* Header */}
-        <div className="text-center mb-16">
+        <div className="text-center mb-12">
           <h1 className="text-5xl font-normal text-foreground tracking-tight mb-3">
             Activity Feed
           </h1>
           <p className="text-sm text-muted-foreground">
             Recent activity and conversations
           </p>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap gap-4 mb-8">
+          <select
+            value={activityType}
+            onChange={(e) => handleActivityTypeChange(e.target.value as 'all' | 'project' | 'customer' | 'task' | 'comment')}
+            className="border border-border bg-background text-foreground text-sm rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="all">All Types</option>
+            <option value="project">Projects</option>
+            <option value="customer">Customers</option>
+            <option value="task">Tasks</option>
+            <option value="comment">Comments</option>
+          </select>
+
+          <select
+            value={dateRange}
+            onChange={(e) => handleDateRangeChange(e.target.value as 'all' | 'today' | 'week' | 'month')}
+            className="border border-border bg-background text-foreground text-sm rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="all">All Time</option>
+            <option value="today">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+          </select>
+
+          <select
+            value={userId}
+            onChange={(e) => handleUserIdChange(e.target.value)}
+            className="border border-border bg-background text-foreground text-sm rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="all">All Users</option>
+            {users.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.name || user.email}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Activity Feed */}
@@ -231,13 +332,13 @@ export default function ActivityFeedPage() {
                             className="group"
                           >
                             <h3 className="text-base font-medium text-foreground mb-1 group-hover:text-primary transition-colors flex items-center gap-2">
-                              "{activity.title}" was {activity.action || 'updated'}
+                              &quot;{activity.title}&quot; was {activity.action || 'updated'}
                               <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </h3>
                           </Link>
                         ) : (
                           <h3 className="text-base font-medium text-foreground mb-1">
-                            "{activity.title}" was {activity.action || 'updated'}
+                            &quot;{activity.title}&quot; was {activity.action || 'updated'}
                             {activity.isEntityDeleted && <span className="text-muted-foreground text-sm ml-2">(deleted)</span>}
                           </h3>
                         )}
@@ -381,6 +482,33 @@ export default function ActivityFeedPage() {
             >
               Get started with your first project
             </Link>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {data?.pagination && data.pagination.totalPages > 1 && (
+          <div className="flex items-center justify-center gap-4 mt-8 pt-8 border-t border-border">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </button>
+
+            <span className="text-sm text-muted-foreground">
+              Page {data.pagination.page} of {data.pagination.totalPages}
+            </span>
+
+            <button
+              onClick={() => setPage(p => Math.min(data.pagination.totalPages, p + 1))}
+              disabled={page >= data.pagination.totalPages}
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
         )}
 

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
@@ -6,26 +6,83 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Get recent activities from activities table
-    const { data: recentActivity } = await supabase
-      .from('activities')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(20)
+    const { searchParams } = new URL(request.url)
 
-    // Get recent comments (all entity types)
-    const { data: recentComments } = await supabase
-      .from('comments')
-      .select('*')
-      .is('parent_id', null) // Only top-level comments
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false })
-      .limit(20)
+    // Parse pagination parameters
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '15')
 
-    const activities = recentActivity || []
-    const comments = recentComments || []
+    // Parse filter parameters
+    const activityType = searchParams.get('activityType') || 'all' // 'all' | 'project' | 'customer' | 'task' | 'comment'
+    const dateRange = searchParams.get('dateRange') || 'all' // 'all' | 'today' | 'week' | 'month'
+    const userId = searchParams.get('userId') || 'all'
+
+    // Calculate date filter
+    let dateFilter: Date | null = null
+    const now = new Date()
+    if (dateRange === 'today') {
+      dateFilter = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    } else if (dateRange === 'week') {
+      dateFilter = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+    } else if (dateRange === 'month') {
+      dateFilter = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let activities: any[] = []
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let comments: any[] = []
+
+    // Fetch activities if needed (for 'all', 'project', 'customer', or 'task')
+    if (activityType === 'all' || activityType === 'project' || activityType === 'customer' || activityType === 'task') {
+      let activityQuery = supabase
+        .from('activities')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      // Filter by entity type
+      if (activityType === 'project') {
+        // Project activities only (exclude task activities)
+        activityQuery = activityQuery.not('project_id', 'is', null).not('type', 'like', 'task_%')
+      } else if (activityType === 'customer') {
+        activityQuery = activityQuery.not('customer_id', 'is', null)
+      } else if (activityType === 'task') {
+        // Task activities only (type starts with 'task_')
+        activityQuery = activityQuery.like('type', 'task_%')
+      }
+
+      if (dateFilter) {
+        activityQuery = activityQuery.gte('created_at', dateFilter.toISOString())
+      }
+      if (userId !== 'all') {
+        activityQuery = activityQuery.eq('performed_by', userId)
+      }
+
+      const { data: activityData } = await activityQuery
+      activities = activityData || []
+    }
+
+    // Fetch comments if needed (for 'all' or 'comment')
+    if (activityType === 'all' || activityType === 'comment') {
+      let commentQuery = supabase
+        .from('comments')
+        .select('*')
+        .is('parent_id', null) // Only top-level comments
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+
+      if (dateFilter) {
+        commentQuery = commentQuery.gte('created_at', dateFilter.toISOString())
+      }
+      if (userId !== 'all') {
+        commentQuery = commentQuery.eq('author_id', userId)
+      }
+
+      const { data: commentData } = await commentQuery
+      comments = commentData || []
+    }
 
     // Collect entity IDs by type
     const projectIds = [
@@ -36,10 +93,16 @@ export async function GET() {
       ...comments.filter(c => c.entity_type === 'CUSTOMER').map(c => c.entity_id)
     ]
 
-    // Collect user IDs from activities (deduplicated)
-    const userIds = [...new Set(
-      activities.filter(a => a.performed_by).map(a => a.performed_by)
-    )]
+    // Collect user IDs from activities and comments (only Clerk IDs that start with "user_")
+    const activityUserIds = activities
+      .filter(a => a.performed_by && a.performed_by.startsWith('user_'))
+      .map(a => a.performed_by)
+
+    const commentAuthorIds = comments
+      .filter(c => c.author_id && c.author_id.startsWith('user_'))
+      .map(c => c.author_id)
+
+    const userIds = [...new Set([...activityUserIds, ...commentAuthorIds])]
 
     // Fetch entity details and users
     const [projectsData, customersData, usersData] = await Promise.all([
@@ -55,8 +118,11 @@ export async function GET() {
     ])
 
     // Create lookup maps
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const projectMap: Record<string, any> = {}
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const customerMap: Record<string, any> = {}
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const userMap: Record<string, any> = {}
 
     projectsData.data?.forEach(p => { projectMap[p.id] = p })
@@ -71,7 +137,25 @@ export async function GET() {
       let linkHref = null
       let isEntityDeleted = false
 
-      if (activity.project_id) {
+      const actionType = activity.type || ''
+
+      // Check if this is a task activity
+      if (actionType.startsWith('task_')) {
+        entityType = 'Task'
+        // Extract task title from description (format: Task "Title" was ...)
+        const titleMatch = activity.description?.match(/"([^"]+)"/)
+        entityName = titleMatch ? titleMatch[1] : activity.description || 'Task'
+        entityId = activity.project_id
+        // Link to the project since tasks are viewed within projects
+        if (activity.project_id) {
+          const project = projectMap[activity.project_id]
+          if (project) {
+            linkHref = `/projects/${activity.project_id}`
+          } else {
+            isEntityDeleted = true
+          }
+        }
+      } else if (activity.project_id) {
         const project = projectMap[activity.project_id]
         entityType = 'Project'
         entityId = activity.project_id
@@ -95,12 +179,20 @@ export async function GET() {
         }
       }
 
-      // Get user name
-      const user = activity.performed_by ? userMap[activity.performed_by] : null
-      const userName = user?.name || user?.email || null
+      // Get user name - performed_by may contain user ID or name directly
+      let userName = null
+      if (activity.performed_by) {
+        // Check if it's a Clerk user ID (starts with "user_")
+        if (activity.performed_by.startsWith('user_')) {
+          const user = userMap[activity.performed_by]
+          userName = user?.name || user?.email || null
+        } else {
+          // It's already a name
+          userName = activity.performed_by
+        }
+      }
 
       // Parse action from activity type (e.g., "project_created" -> "created")
-      const actionType = activity.type || ''
       let action = 'updated'
       if (actionType.includes('created')) action = 'created'
       else if (actionType.includes('deleted')) action = 'deleted'
@@ -129,7 +221,7 @@ export async function GET() {
     const formattedComments = comments.map((comment) => {
       let entityType = 'Comment'
       let entityName = ''
-      let entityId = comment.entity_id
+      const entityId = comment.entity_id
       let linkHref = null
       let isEntityDeleted = false
 
@@ -155,13 +247,22 @@ export async function GET() {
         }
       }
 
+      // Get author name - look up from author_id if it's a Clerk ID, otherwise use stored author
+      let authorName = comment.author || 'User'
+      if (comment.author_id && comment.author_id.startsWith('user_')) {
+        const user = userMap[comment.author_id]
+        if (user) {
+          authorName = user.name || user.email || comment.author || 'User'
+        }
+      }
+
       return {
         id: `comment-${comment.id}`,
         activityType: 'comment',
         commentId: comment.id,
-        title: `${comment.author} commented on ${entityName}`,
+        title: `${authorName} commented on ${entityName}`,
         type: entityType,
-        author: comment.author,
+        author: authorName,
         content: comment.content,
         time: getRelativeTime(new Date(comment.created_at)),
         timestamp: comment.created_at,
@@ -198,10 +299,21 @@ export async function GET() {
     // Combine and sort by timestamp
     const allActivity = [...formattedActivities, ...formattedComments]
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, 20) // Keep top 20
+
+    // Calculate pagination
+    const total = allActivity.length
+    const totalPages = Math.ceil(total / limit)
+    const offset = (page - 1) * limit
+    const paginatedActivity = allActivity.slice(offset, offset + limit)
 
     return NextResponse.json({
-      recentActivity: allActivity
+      recentActivity: paginatedActivity,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages
+      }
     })
   } catch (error) {
     console.error('Failed to fetch dashboard stats:', error)

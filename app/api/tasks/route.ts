@@ -7,21 +7,14 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-async function getCurrentUserName(): Promise<string> {
+async function getCurrentUserId(): Promise<string | null> {
   try {
     const user = await currentUser()
-    if (user) {
-      const { data: userData } = await supabase
-        .from('users')
-        .select('name')
-        .eq('id', user.id)
-        .single()
-      return userData?.name || 'User'
-    }
+    return user?.id || null
   } catch (error) {
     console.error('Failed to get current user:', error)
   }
-  return 'User'
+  return null
 }
 
 export async function GET(request: Request) {
@@ -80,7 +73,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const performedBy = await getCurrentUserName()
+    const performedBy = await getCurrentUserId()
 
     // Validate required fields
     if (!body.projectId) {

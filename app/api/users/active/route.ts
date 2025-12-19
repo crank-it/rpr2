@@ -15,11 +15,12 @@ export async function GET() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // Get active users only with minimal fields
+  // Get active users only with minimal fields (exclude superadmin)
   const { data: users, error } = await supabase
     .from("users")
     .select("id, name, email, image_url")
     .eq("status", "active")
+    .neq("role", "superadmin")
     .order("name", { ascending: true });
 
   if (error) {
