@@ -102,7 +102,10 @@ export async function GET(request: NextRequest) {
       .filter(c => c.author_id && c.author_id.startsWith('user_'))
       .map(c => c.author_id)
 
-    const userIds = [...new Set([...activityUserIds, ...commentAuthorIds])]
+    // Include the filtered userId to ensure we have their name for display
+    const filteredUserId = userId !== 'all' && userId.startsWith('user_') ? [userId] : []
+
+    const userIds = [...new Set([...activityUserIds, ...commentAuthorIds, ...filteredUserId])]
 
     // Fetch entity details and users
     const [projectsData, customersData, usersData] = await Promise.all([
@@ -185,7 +188,8 @@ export async function GET(request: NextRequest) {
         // Check if it's a Clerk user ID (starts with "user_")
         if (activity.performed_by.startsWith('user_')) {
           const user = userMap[activity.performed_by]
-          userName = user?.name || user?.email || null
+          // Use name, email, or fallback to 'User' if both are empty
+          userName = (user?.name && user.name.trim()) || (user?.email && user.email.trim()) || 'User'
         } else {
           // It's already a name
           userName = activity.performed_by
@@ -252,7 +256,7 @@ export async function GET(request: NextRequest) {
       if (comment.author_id && comment.author_id.startsWith('user_')) {
         const user = userMap[comment.author_id]
         if (user) {
-          authorName = user.name || user.email || comment.author || 'User'
+          authorName = (user.name && user.name.trim()) || (user.email && user.email.trim()) || comment.author || 'User'
         }
       }
 
