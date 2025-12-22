@@ -35,6 +35,20 @@ export async function GET(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let comments: any[] = []
 
+    // If filtering by user, get the user's name for matching performed_by (which may contain name instead of ID)
+    let selectedUserName: string | null = null
+    if (userId !== 'all') {
+      const { data: selectedUser } = await supabase
+        .from('users')
+        .select('name, email')
+        .eq('id', userId)
+        .single()
+
+      if (selectedUser) {
+        selectedUserName = selectedUser.name || selectedUser.email || null
+      }
+    }
+
     // Fetch activities if needed (for 'all', 'project', 'customer', or 'task')
     if (activityType === 'all' || activityType === 'project' || activityType === 'customer' || activityType === 'task') {
       let activityQuery = supabase
@@ -56,8 +70,14 @@ export async function GET(request: NextRequest) {
       if (dateFilter) {
         activityQuery = activityQuery.gte('created_at', dateFilter.toISOString())
       }
+
+      // Filter by user - check both user ID and user name since performed_by can contain either
       if (userId !== 'all') {
-        activityQuery = activityQuery.eq('performed_by', userId)
+        const performedByValues = [userId]
+        if (selectedUserName) {
+          performedByValues.push(selectedUserName)
+        }
+        activityQuery = activityQuery.in('performed_by', performedByValues)
       }
 
       const { data: activityData } = await activityQuery
@@ -90,6 +110,7 @@ export async function GET(request: NextRequest) {
       ...comments.filter(c => c.entity_type === 'PROJECT').map(c => c.entity_id)
     ]
     const customerIds = [
+      ...activities.filter(a => a.customer_id).map(a => a.customer_id),
       ...comments.filter(c => c.entity_type === 'CUSTOMER').map(c => c.entity_id)
     ]
 
